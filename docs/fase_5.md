@@ -70,7 +70,9 @@ Render. Respuestas en `reports/render_public_smoke.json` y `docs/fase_4.md`.
   El reporte fue publicado como artifact `real-data-drift-report` por 30 dias.
   Es una senal para revision, no evidencia por si sola de fallo del modelo.
 
-El run de data update aparece con todos sus pasos exitosos y el artifact
-disponible; la API de Actions mantuvo temporalmente el estado agregado del run
-como `in_progress`, aunque el job `download-real-data` concluyo en `success`.
-Los runs manuales de retrain y monitoring concluyeron `success`.
+El run de data update completo concluyo `success` a las 22:34:45Z. El job y el
+artifact habian terminado correctamente a las 22:23:46Z; la vista/API de
+Actions tardo aproximadamente 11 minutos en reflejar la conclusion agregada.
+La demora fue de sincronizacion del estado de Actions, no un fallo del
+workflow, por lo que no se requirio corregirlo ni repetir la descarga. Los runs
+manuales de retrain y monitoring tambien concluyeron `success`.

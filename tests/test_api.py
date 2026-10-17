@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from src.wildfire.api import FEATURES, app
@@ -36,6 +37,33 @@ def test_prediction_returns_probability_threshold_and_cell():
     assert isinstance(result["predicted_hotspot"], bool)
 
 
+def test_real_holdout_examples_match_api_predictions():
+    examples_response = client.get("/examples/real")
+
+    assert examples_response.status_code == 200
+    examples = examples_response.json()
+    threshold = client.get("/model-info").json()["selected_threshold"]
+    assert examples["positive"]["observed_hotspot"] is True
+    assert examples["negative"]["observed_hotspot"] is False
+
+    for kind, example in examples.items():
+        response = client.post(
+            "/predict",
+            json={
+                "cell_id": example["cell_id"],
+                "date": example["date"],
+                "features": example["features"],
+            },
+        )
+
+        assert response.status_code == 200
+        prediction = response.json()
+        assert prediction["probability"] == pytest.approx(example["expected_probability"])
+        assert prediction["threshold"] == threshold
+        assert prediction["predicted_hotspot"] is example["observed_hotspot"]
+        assert prediction["predicted_hotspot"] is (kind == "positive")
+
+
 def test_prediction_rejects_missing_or_nonfinite_features():
     incomplete = client.post(
         "/predict",
@@ -66,6 +94,8 @@ def test_frontend_is_served_in_english():
 
     assert response.status_code == 200
     assert "Wildfire Hotspot Classifier" in response.text
+    assert "Load real positive example" in response.text
+    assert "Load real negative example" in response.text
     assert "Get prediction" in response.text
 
 
@@ -73,4 +103,9 @@ def test_swagger_openapi_exposes_requested_routes():
     response = client.get("/openapi.json")
 
     assert response.status_code == 200
-    assert set(response.json()["paths"]) == {"/health", "/model-info", "/predict"}
+    assert set(response.json()["paths"]) == {
+        "/health",
+        "/model-info",
+        "/examples/real",
+        "/predict",
+    }

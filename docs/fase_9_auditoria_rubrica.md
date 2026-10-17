@@ -48,6 +48,6 @@ filas de esta matriz antes de asignar una calificacion.
 ## Cierre de auditoria
 
 Las filas 9–11 se actualizaron con ejecuciones reales de Actions y resultados
-observados. El run de ingesta dejo el job y artifact exitosos; aunque el estado
-agregado del run aparecio como `in_progress` en la API de Actions, no hubo
-fallo en sus pasos. No se asigna puntaje porque falta la rubrica institucional.
+observados. El run de ingesta completo concluyo `success`; el estado agregado
+tardo en sincronizarse unos 11 minutos despues de finalizar el job/artifact.
+No se asigna puntaje porque falta la rubrica institucional.

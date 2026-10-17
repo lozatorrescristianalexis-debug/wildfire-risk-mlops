@@ -1,0 +1,48 @@
+{
+  "positive": {
+    "cell_id": "r002_c012",
+    "date": "2026-09-28",
+    "observed_hotspot": true,
+    "fire_count": 6,
+    "expected_probability": 0.9497865438461304,
+    "threshold": 0.6532685160636902,
+    "features": {
+      "temperature_2m_max_lag1": 35.8,
+      "relative_humidity_2m_mean_lag1": 74.0,
+      "precipitation_sum_lag1": 0.2,
+      "wind_speed_10m_max_lag1": 9.4,
+      "temperature_2m_max_mean_3d": 34.49999999999999,
+      "temperature_2m_max_mean_7d": 32.871428571428574,
+      "relative_humidity_2m_mean_mean_7d": 75.14285714285714,
+      "wind_speed_10m_max_mean_7d": 12.671428571428573,
+      "precipitation_sum_sum_3d": 6.700000000000029,
+      "precipitation_sum_sum_7d": 11.39999999999997,
+      "precipitation_sum_sum_30d": 71.6,
+      "latitude": -12.7163977,
+      "longitude": -69.3037387
+    }
+  },
+  "negative": {
+    "cell_id": "r003_c003",
+    "date": "2026-08-18",
+    "observed_hotspot": false,
+    "fire_count": 0,
+    "expected_probability": 0.005336114205420017,
+    "threshold": 0.6532685160636902,
+    "features": {
+      "temperature_2m_max_lag1": 22.8,
+      "relative_humidity_2m_mean_lag1": 94.0,
+      "precipitation_sum_lag1": 17.0,
+      "wind_speed_10m_max_lag1": 9.1,
+      "temperature_2m_max_mean_3d": 24.33333333333333,
+      "temperature_2m_max_mean_7d": 24.342857142857145,
+      "relative_humidity_2m_mean_mean_7d": 87.14285714285714,
+      "wind_speed_10m_max_mean_7d": 7.757142857142857,
+      "precipitation_sum_sum_3d": 23.099999999999987,
+      "precipitation_sum_sum_7d": 40.90000000000001,
+      "precipitation_sum_sum_30d": 165.10000000000002,
+      "latitude": -12.4663977,
+      "longitude": -71.5537387
+    }
+  }
+}

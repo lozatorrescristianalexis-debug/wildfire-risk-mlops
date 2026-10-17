@@ -36,6 +36,10 @@
         <label>Grid cell ID<input name="cell_id" value="r013_c007" required maxlength="64"></label>
         <label>Observation date<input name="date" type="date" value="2026-10-10" required></label>
       </div>
+      <p>
+        <button id="load-positive-example" type="button" disabled>Load real positive example</button>
+        <button id="load-negative-example" type="button" disabled>Load real negative example</button>
+      </p>
       <h3>Lagged weather and location features</h3>
       <div id="feature-fields" class="grid"></div>
       <p><button id="submit-button" type="submit">Get prediction</button></p>
@@ -59,6 +63,31 @@
   const button = document.querySelector("#submit-button");
   const results = document.querySelector("#results");
 
+  async function loadRealExample(kind) {
+    try {
+      const response = await fetch("/examples/real");
+      if (!response.ok) throw new Error(`Real examples request failed (${response.status}).`);
+      const examples = await response.json();
+      const example = examples[kind];
+      if (!example) throw new Error(`Real ${kind} example is unavailable.`);
+      form.querySelector('[name="cell_id"]').value = example.cell_id;
+      form.querySelector('[name="date"]').value = example.date;
+      for (const input of fields.querySelectorAll("input")) {
+        input.value = String(example.features[input.name]);
+      }
+      const outcome = example.observed_hotspot ? "observed hotspot" : "no hotspot observed";
+      status.textContent =
+        `Loaded real ${kind} holdout example: ${example.cell_id} on ${example.date} · ${outcome} · ` +
+        `recorded model probability ${(example.expected_probability * 100).toFixed(2)}% ` +
+        `(threshold ${(example.threshold * 100).toFixed(2)}%). Select Get prediction to score it.`;
+    } catch (error) {
+      status.textContent = error.message;
+    }
+  }
+
+  document.querySelector("#load-positive-example").addEventListener("click", () => loadRealExample("positive"));
+  document.querySelector("#load-negative-example").addEventListener("click", () => loadRealExample("negative"));
+
   async function loadModelInfo() {
     const response = await fetch("/model-info");
     if (!response.ok) throw new Error(`Model information request failed (${response.status}).`);
@@ -77,6 +106,8 @@
       label.append(input);
       fields.append(label);
     }
+    document.querySelector("#load-positive-example").disabled = false;
+    document.querySelector("#load-negative-example").disabled = false;
   }
 
   form.addEventListener("submit", async (event) => {

@@ -19,6 +19,7 @@ from .features import GRID_FEATURES
 MODEL_PATH = ROOT / "models" / "wildfire_real.joblib"
 METRICS_PATH = ROOT / "reports" / "real_metrics.json"
 WEB_PATH = ROOT / "web" / "index.html"
+EXAMPLES_PATH = ROOT / "web" / "real_examples.json"
 logger = logging.getLogger("wildfire.api")
 FEATURES = tuple(GRID_FEATURES)
 
@@ -98,6 +99,10 @@ def create_app() -> FastAPI:
             "features": list(bundle["features"]),
             "test_metrics": metadata["test_metrics"],
         }
+
+    @app.get("/examples/real")
+    def real_examples():
+        return json.loads(EXAMPLES_PATH.read_text(encoding="utf-8"))
 
     @app.post("/predict", response_model=Prediction)
     def predict(request: PredictRequest):
