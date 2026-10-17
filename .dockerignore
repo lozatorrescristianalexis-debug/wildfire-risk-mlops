@@ -8,9 +8,10 @@ data/processed
 data/demo
 models/*
 !models/.gitkeep
+!models/wildfire_real.joblib
 logs
 reports/metrics.json
-reports/real_metrics.json
+!reports/real_metrics.json
 reports/demo
 tests
 notebooks

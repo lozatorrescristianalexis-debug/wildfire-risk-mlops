@@ -1,72 +1,69 @@
-# Fase 4: datos reales de Madre de Dios
+# Fase 4: contenedor y despliegue
 
-## Region y configuracion
+## Modelo y metadatos en la imagen
 
-- Departamento amazonico: Madre de Dios, Peru.
-- Bounding box FIRMS (`oeste,sur,este,norte`):
-  `-72.4287387,-13.3413977,-68.6519906,-9.9069082`, derivado del bounding box
-  de la relacion administrativa
-  [OpenStreetMap 1891287](https://www.openstreetmap.org/relation/1891287).
-- Periodo solicitado: `2024-10-10` a `2026-10-10`, inclusivo.
-- Malla: 144 celdas de 0.25 grados que intersectan el poligono.
-- Se uso exclusivamente `VIIRS_SNPP_SP`, `VIIRS_SNPP_NRT` y Open-Meteo
-  Archive; ninguna salida de `data-demo` se uso en el entrenamiento final.
+Se eligio empaquetar en el repositorio y en la imagen solo los dos artefactos
+necesarios para inferencia:
 
-Madre de Dios se escogio para acotar el problema a una unidad administrativa
-amazonica sin mezclar departamentos. FIRMS consulta un rectangulo; los puntos
-se filtraron posteriormente contra la geometria administrativa y se asignaron
-a una malla espacial.
+- `models/wildfire_real.joblib` (402.371 bytes).
+- `reports/real_metrics.json` (metadatos, features, umbral y resultados).
 
-## Descargas reales y cobertura
+Son archivos pequenos, reproducibles y generados por este proyecto. Esta
+opcion evita depender de un volumen local, un registro externo de modelos o una
+descarga de artefactos en tiempo de arranque. `.gitignore` mantiene ignorados
+los modelos restantes y los datos. `Dockerfile` copia solamente codigo, web,
+modelo y metadatos. `.dockerignore` excluye expresamente `.env`, `data/raw/`,
+`data/processed/` y caches; los datos crudos no forman parte de la imagen,
+Git ni de la carga de despliegue.
 
-FIRMS devolvio 11.845 detecciones SP (`2024-10-10` a `2026-06-30`) y 5.171
-detecciones NRT (`2026-08-21` a `2026-10-10`), 17.016 brutas en total. NRT se
-solicito para los 60 dias moviles disponibles, desde `2026-08-19`. Los
-rangos expresan las primeras y ultimas fechas con detecciones devueltas, no
-garantizan cobertura en cada fecha. Se observa una brecha entre el 1 de julio
-y el 20 de agosto de 2026. No se inventaron detecciones, negativos ni datos de
-reemplazo para ese intervalo.
+## Build y prueba local observados
 
-Open-Meteo devolvio 105.264 filas celda-dia para 144 celdas y 731 dias, sin
-nulos meteorologicos. Se recibio HTTP 429 en una ejecucion inicial de la API;
-se agregaron pausas conservadoras y cache por bloque, y la ejecucion reanudada
-completo los datos reales. No hubo error final de FIRMS.
+Con Docker Desktop activo:
 
-La integracion resulto en 37.584 ejemplos celda-dia para fechas activas entre
-`2024-11-11` y `2026-10-10`, con 1.964 positivos (5,23 %), 35.620 negativos y
-cero nulos en las features finales. Los negativos solo se forman en fechas
-con detecciones en alguna celda del departamento y son un proxy de actividad
-del satelite, no ausencia confirmada de fuego. 6.637 detecciones permanecen
-en las filas integradas tras el calentamiento de variables rezagadas.
+```powershell
+docker compose config --quiet
+docker compose up -d
+```
 
-El detalle de filas, filtros y balance esta en
-[`real_ingestion.json`](../reports/real_ingestion.json); la cobertura por
-fuente esta en `data/raw/firms_source_coverage.json` (local, ignorado por Git).
-Los datos raw y el dataset procesado tambien se mantienen locales e ignorados.
-`MAP_KEY` se lee desde `.env`; su valor no se escribe en codigo, reportes ni
-Git.
+Ambos comandos terminaron con codigo 0. Compose creo y arranco el servicio
+`api`. Se hizo build multi-stage de `python:3.11-slim`; Docker informo
+`Successfully installed` para las dependencias y exporto la imagen
+`wildfire-risk-mlops:latest` sin errores. El contenedor usa usuario no
+privilegiado y healthcheck HTTP. Compose publica el puerto local 8000 hacia
+7860 y aplica su propio healthcheck.
 
-## Modelo real
+Cliente `requests` contra `http://127.0.0.1:8000`:
 
-Optuna ajusto cuatro clasificadores durante 10 trials por modelo con tres
-folds temporales. La particion de prueba contiene 7.632 filas entre
-`2026-06-06` y `2026-10-10`, separada por fechas. XGBoost se selecciono usando
-predicciones out-of-fold de entrenamiento, con umbral `0.71171`. En el holdout
-obtuvo F1 `0.5506`, precision `0.4014`, recall `0.8763`, ROC-AUC `0.9335` y
-PR-AUC `0.5252`; confusion matrix `[[6121, 856], [81, 574]]`.
-HistGradientBoosting obtuvo mayores metricas observadas en el holdout, pero no
-se uso ese conjunto para elegir el modelo. Esta tarea es una clasificacion
-retrospectiva, no un pronostico operacional.
+| Ruta | Resultado observado |
+| --- | --- |
+| `GET /health` | HTTP 200, `status=ok`, `model_loaded=true` |
+| `GET /model-info` | HTTP 200, XGBoost real, periodo 2024-11-11–2026-10-10 |
+| `POST /predict` | HTTP 200; celda `r013_c007`, fecha 2026-10-10, probabilidad `0.0714573`, umbral `0.6532685`, clase `false` |
+| `GET /openapi.json` | HTTP 200, incluye `/health`, `/model-info`, `/predict` |
+| `GET /` | HTTP 200, frontend identificado |
 
-Las tablas completas estan en [`fase_2.md`](fase_2.md) y las figuras en
-`reports/figures/`. El modelo `models/wildfire_real.joblib` y
-`reports/real_metrics.json` se generan localmente y se excluyen de Git.
+Inspeccion dentro del contenedor confirmo que `.env`, `data/raw`,
+`data/processed` no existen, mientras que `models/wildfire_real.joblib` y
+`reports/real_metrics.json` si existen. Respuestas observadas y verificacion
+de contenido: `reports/docker_http_evidence.json`. La exclusion tambien esta
+aplicada en `.gitignore`; `git ls-files data/raw .env` no encontro archivos
+sensibles versionados.
 
-## Validacion ejecutada
+## Plataforma gratuita y requisitos externos
 
-- `.\scripts\run.ps1 data` -> ingesta real integrada, exit code 0.
-- `.\.venv\Scripts\python.exe -m src.wildfire.cli train --trials 10` ->
-  cuatro modelos entrenados y comparados, exit code 0.
-- `.\.venv\Scripts\python.exe -m pytest -q` -> 19 pruebas aprobadas.
-- `.\.venv\Scripts\python.exe -m pip check` -> sin dependencias rotas.
-- `git check-ignore -v .env` -> `.env` ignorado por Git.
+Recomendacion: Hugging Face Spaces con Docker / CPU Basic. Encaja con el
+Dockerfile y el modelo pequeno; es adecuado para una demostracion gratuita,
+pero puede dormir o estar sujeto a cuotas, sin SLA ni aptitud para alertas
+operativas.
+
+Para el despliegue remoto, el propietario debe crear una cuenta Hugging Face y
+un Space publico de tipo Docker, y configurar en GitHub Actions:
+
+- Secret `HF_TOKEN`: token Hugging Face con permiso de escritura al Space.
+- Variable `HF_SPACE`: `usuario/nombre-del-space`.
+- Secret `MAP_KEY`: clave FIRMS, necesaria solo para `data_update.yml`.
+
+El workflow CD publica una allow-list y hace smoke test a `/health`. La carga
+no incluye `.env`, datos crudos, dataset procesado, caches ni claves. El
+despliegue externo y su smoke test aun no se ejecutaron: este entorno no tiene
+configurados `HF_TOKEN` ni `HF_SPACE`. No compartas los tokens por chat.

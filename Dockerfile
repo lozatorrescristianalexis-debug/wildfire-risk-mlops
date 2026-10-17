@@ -1,15 +1,28 @@
-FROM python:3.11-slim
+FROM python:3.11-slim AS builder
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+WORKDIR /build
+COPY requirements.txt .
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir -r requirements.txt
+
+FROM python:3.11-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN useradd --create-home --uid 10001 appuser
+COPY --from=builder /opt/venv /opt/venv
 COPY src ./src
-COPY data ./data
-COPY models/.gitkeep ./models/.gitkeep
-COPY reports ./reports
+COPY web ./web
+COPY models/wildfire_real.joblib ./models/wildfire_real.joblib
+COPY reports/real_metrics.json ./reports/real_metrics.json
 
-ENTRYPOINT ["python", "-m", "src.wildfire.cli"]
-CMD ["--help"]
+USER appuser
+EXPOSE 7860
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD python -c "from urllib.request import urlopen; urlopen('http://127.0.0.1:7860/health', timeout=3)"
+
+CMD ["sh", "-c", "exec uvicorn src.wildfire.api:app --host 0.0.0.0 --port ${PORT:-7860}"]
