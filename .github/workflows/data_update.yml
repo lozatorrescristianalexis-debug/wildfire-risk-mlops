@@ -1,0 +1,46 @@
+name: Refresh real FIRMS data
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  download-real-data:
+    runs-on: ubuntu-latest
+    env:
+      MAP_KEY: ${{ secrets.MAP_KEY }}
+      FIRMS_SOURCE: VIIRS_SNPP_SP
+      START_DATE: "2024-10-10"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Validate secret without displaying its value
+        run: |
+          if [ -z "$MAP_KEY" ]; then
+            echo "::error::Required GitHub Actions secret MAP_KEY is not configured."
+            exit 1
+          fi
+          echo "MAP_KEY configured: yes"
+      - name: Set archive-safe end date
+        run: echo "END_DATE=$(date -u --date='7 days ago' +%F)" >> "$GITHUB_ENV"
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Download and integrate real FIRMS and weather data
+        run: python -m src.wildfire.cli data
+      - name: Upload processed dataset for retraining and drift checks
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-data-update
+          path: |
+            data/processed/real_daily.csv
+            reports/real_ingestion.json
+            reports/firms_gap_alternative_sources.json
+          if-no-files-found: error
+          retention-days: 14

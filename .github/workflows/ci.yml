@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install pinned dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Lint
+        run: python -m ruff check src tests
+      - name: Test with coverage
+        run: python -m pytest --cov=src/wildfire --cov-report=term-missing --cov-report=xml
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Build production image
+        run: docker build --tag wildfire-risk-mlops:ci .
