@@ -7,37 +7,97 @@
       "first_detection": "2024-10-10",
       "last_detection": "2026-06-30",
       "requested_start_date": "2024-10-10",
-      "requested_end_date": "2026-10-10"
+      "requested_end_date": "2026-10-10",
+      "detections_in_administrative_boundary": 5123,
+      "active_dates_in_administrative_boundary": 235,
+      "first_boundary_detection": "2024-10-11",
+      "last_boundary_detection": "2026-06-30"
     },
     "VIIRS_SNPP_NRT": {
       "detections": 5171,
       "first_detection": "2026-08-21",
       "last_detection": "2026-10-10",
       "requested_start_date": "2026-08-19",
-      "requested_end_date": "2026-10-10"
+      "requested_end_date": "2026-10-10",
+      "detections_in_administrative_boundary": 2370,
+      "active_dates_in_administrative_boundary": 46,
+      "first_boundary_detection": "2026-08-21",
+      "last_boundary_detection": "2026-10-10"
+    },
+    "VIIRS_NOAA20_SP": {
+      "detections": 0,
+      "first_detection": null,
+      "last_detection": null,
+      "requested_start_date": "2026-07-01",
+      "requested_end_date": "2026-08-20"
+    },
+    "VIIRS_NOAA20_NRT": {
+      "detections": 600,
+      "first_detection": "2026-07-01",
+      "last_detection": "2026-08-18",
+      "requested_start_date": "2026-07-01",
+      "requested_end_date": "2026-08-20",
+      "detections_in_administrative_boundary": 288,
+      "active_dates_in_administrative_boundary": 32,
+      "first_boundary_detection": "2026-07-03",
+      "last_boundary_detection": "2026-08-17"
+    },
+    "VIIRS_NOAA21_NRT": {
+      "detections": 552,
+      "first_detection": "2026-07-01",
+      "last_detection": "2026-08-20",
+      "requested_start_date": "2026-07-01",
+      "requested_end_date": "2026-08-20",
+      "detections_in_administrative_boundary": 246,
+      "active_dates_in_administrative_boundary": 35,
+      "first_boundary_detection": "2026-07-01",
+      "last_boundary_detection": "2026-08-20"
+    },
+    "MODIS_SP": {
+      "detections": 36,
+      "first_detection": "2026-07-02",
+      "last_detection": "2026-07-31",
+      "requested_start_date": "2026-07-01",
+      "requested_end_date": "2026-08-20",
+      "detections_in_administrative_boundary": 18,
+      "active_dates_in_administrative_boundary": 12,
+      "first_boundary_detection": "2026-07-02",
+      "last_boundary_detection": "2026-07-31"
+    },
+    "MODIS_NRT": {
+      "detections": 37,
+      "first_detection": "2026-08-01",
+      "last_detection": "2026-08-17",
+      "requested_start_date": "2026-07-01",
+      "requested_end_date": "2026-08-20",
+      "detections_in_administrative_boundary": 17,
+      "active_dates_in_administrative_boundary": 5,
+      "first_boundary_detection": "2026-08-06",
+      "last_boundary_detection": "2026-08-15"
     }
   },
+  "source_sensor_note": "SNPP labels are supplemented with separately attributed NOAA20, NOAA21 and MODIS products only during the coverage gap.",
   "features": {
-    "input_firms_rows": 17016,
-    "firms_rows_with_valid_dates_and_coordinates": 17016,
-    "firms_detections_outside_boundary_or_grid": 9523,
-    "firms_detections_in_region_and_period": 7493,
+    "input_firms_rows": 18241,
+    "firms_rows_with_valid_dates_and_coordinates": 18241,
+    "firms_detections_outside_boundary_or_grid": 10179,
+    "firms_detections_in_region_and_period": 8062,
     "grid_cells": 144,
     "grid_cell_degrees": 0.25,
     "calendar_grid_rows": 105264,
-    "dates_with_area_detections": 281,
+    "dates_with_area_detections": 321,
     "weather_rows": 105264,
     "weather_rows_with_missing_values": 0,
     "rows_with_missing_features_before_filter": 4320,
     "rows_removed_for_lag_warmup_or_weather_missing": 2880,
-    "rows_after_filters": 37584,
-    "positive_grid_days": 1964,
-    "negative_grid_days": 35620,
+    "rows_after_filters": 43344,
+    "positive_grid_days": 2218,
+    "negative_grid_days": 41126,
     "null_cells_after_filter": 0,
     "negative_definition": "A grid cell with no FIRMS detection on a date with at least one detection somewhere in the region; this is a coverage proxy, not proof of no fire."
   },
-  "rows": 37584,
-  "positive_grid_days": 1964,
-  "negative_grid_days": 35620,
-  "positive_rate": 0.05225627926777352
+  "rows": 43344,
+  "positive_grid_days": 2218,
+  "negative_grid_days": 41126,
+  "positive_rate": 0.05117201919527501
 }

@@ -1,0 +1,190 @@
+{
+  "task": "spatiotemporal grid-cell FIRMS hotspot classification; not a fire forecast",
+  "data_source": "firms_open_meteo",
+  "dataset": "E:\\aprendizaje de maquina\\data\\processed\\real_daily.csv",
+  "rows": 43344,
+  "date_start": "2024-11-11",
+  "date_end": "2026-10-10",
+  "grid_cells": 144,
+  "positive_grid_days": 2218,
+  "negative_grid_days": 41126,
+  "positive_rate": 0.05117201919527501,
+  "detection_count_in_retained_examples": 7206,
+  "train_rows": 34560,
+  "train_positive_rows": 1458,
+  "test_rows": 8784,
+  "test_positive_rows": 760,
+  "test_negative_rows": 8024,
+  "test_date_start": "2026-08-02",
+  "test_date_end": "2026-10-10",
+  "temporal_split": "80/20 by ascending distinct active date; no date appears in both partitions",
+  "tuning": {
+    "method": "Optuna TPE optimizing average precision across 3 expanding temporal folds",
+    "trials_per_model": 10,
+    "model_selection": "best temporal OOF F1, tie-broken by CV average precision; test set not used"
+  },
+  "negative_definition": "No cell-level FIRMS detection on a day when at least one detection occurred somewhere in the region. This is a satellite-activity proxy, not verified absence of fire or guaranteed cell-level overpass.",
+  "selected_model": "xgboost",
+  "selected_threshold": 0.6532685160636902,
+  "test_metrics": {
+    "f1": 0.5164960182025028,
+    "precision": 0.36281299946723494,
+    "recall": 0.8960526315789473,
+    "roc_auc": 0.9279458499501496,
+    "pr_auc": 0.5110301756557621,
+    "threshold": 0.6532685160636902,
+    "confusion_matrix": [
+      [
+        6828,
+        1196
+      ],
+      [
+        79,
+        681
+      ]
+    ]
+  },
+  "models": {
+    "logistic": {
+      "best_params": {
+        "C": 0.0019517224641449498
+      },
+      "trials": 10,
+      "cv_mean_pr_auc": 0.14510283236030758,
+      "validation_f1_at_selected_threshold": 0.2691538974017322,
+      "selected_threshold_from_temporal_oof": 0.6404696629158999,
+      "test": {
+        "f1": 0.3485395470955038,
+        "precision": 0.23218189768255357,
+        "recall": 0.6986842105263158,
+        "roc_auc": 0.8149333250249252,
+        "pr_auc": 0.20158025480781994,
+        "threshold": 0.6404696629158999,
+        "confusion_matrix": [
+          [
+            6268,
+            1756
+          ],
+          [
+            229,
+            531
+          ]
+        ]
+      }
+    },
+    "random_forest": {
+      "best_params": {
+        "n_estimators": 100,
+        "max_depth": 18,
+        "min_samples_leaf": 13,
+        "max_features": 1.0
+      },
+      "trials": 10,
+      "cv_mean_pr_auc": 0.30753060431324,
+      "validation_f1_at_selected_threshold": 0.4206974128233971,
+      "selected_threshold_from_temporal_oof": 0.370900692673607,
+      "test": {
+        "f1": 0.52375249500998,
+        "precision": 0.37593123209169055,
+        "recall": 0.8631578947368421,
+        "roc_auc": 0.9292879584929421,
+        "pr_auc": 0.5165737545617187,
+        "threshold": 0.370900692673607,
+        "confusion_matrix": [
+          [
+            6935,
+            1089
+          ],
+          [
+            104,
+            656
+          ]
+        ]
+      }
+    },
+    "hist_gradient_boosting": {
+      "best_params": {
+        "max_iter": 100,
+        "learning_rate": 0.02864339657822303,
+        "max_leaf_nodes": 15,
+        "l2_regularization": 2.1423021757741068
+      },
+      "trials": 10,
+      "cv_mean_pr_auc": 0.3504081422600445,
+      "validation_f1_at_selected_threshold": 0.42563482466747277,
+      "selected_threshold_from_temporal_oof": 0.6265281098924931,
+      "test": {
+        "f1": 0.508955223880597,
+        "precision": 0.35520833333333335,
+        "recall": 0.8973684210526316,
+        "roc_auc": 0.9262482289972189,
+        "pr_auc": 0.48058381148025825,
+        "threshold": 0.6265281098924931,
+        "confusion_matrix": [
+          [
+            6786,
+            1238
+          ],
+          [
+            78,
+            682
+          ]
+        ]
+      }
+    },
+    "xgboost": {
+      "best_params": {
+        "n_estimators": 250,
+        "max_depth": 4,
+        "learning_rate": 0.023231731978492907,
+        "subsample": 0.984665661176,
+        "colsample_bytree": 0.9896896099223678,
+        "reg_lambda": 7.246804518258447
+      },
+      "trials": 10,
+      "cv_mean_pr_auc": 0.33044892655501507,
+      "validation_f1_at_selected_threshold": 0.4316360816748514,
+      "selected_threshold_from_temporal_oof": 0.6532685160636902,
+      "test": {
+        "f1": 0.5164960182025028,
+        "precision": 0.36281299946723494,
+        "recall": 0.8960526315789473,
+        "roc_auc": 0.9279458499501496,
+        "pr_auc": 0.5110301756557621,
+        "threshold": 0.6532685160636902,
+        "confusion_matrix": [
+          [
+            6828,
+            1196
+          ],
+          [
+            79,
+            681
+          ]
+        ]
+      }
+    }
+  },
+  "features": [
+    "temperature_2m_max_lag1",
+    "relative_humidity_2m_mean_lag1",
+    "precipitation_sum_lag1",
+    "wind_speed_10m_max_lag1",
+    "temperature_2m_max_mean_3d",
+    "temperature_2m_max_mean_7d",
+    "relative_humidity_2m_mean_mean_7d",
+    "wind_speed_10m_max_mean_7d",
+    "precipitation_sum_sum_3d",
+    "precipitation_sum_sum_7d",
+    "precipitation_sum_sum_30d",
+    "latitude",
+    "longitude"
+  ],
+  "figures": [
+    "confusion_matrix_real.png",
+    "eda_real.png",
+    "feature_importance_real.png",
+    "model_comparison_real.png",
+    "roc_pr_real.png"
+  ]
+}

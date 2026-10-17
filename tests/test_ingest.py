@@ -274,6 +274,7 @@ def test_grid_daily_features_are_lagged_and_negatives_require_area_activity(tmp_
             "acq_date": ["2024-02-05"],
             "latitude": [cell.latitude],
             "longitude": [cell.longitude],
+            "firms_source": ["VIIRS_SNPP_SP"],
         }
     )
     dataset, stats = engineer_grid_daily(
@@ -285,4 +286,5 @@ def test_grid_daily_features_are_lagged_and_negatives_require_area_activity(tmp_
     assert dataset["temperature_2m_max_lag1"].eq(34).all()
     assert dataset["precipitation_sum_sum_30d"].eq(30).all()
     assert dataset["data_source"].eq("firms_open_meteo").all()
+    assert dataset.loc[dataset["label"].eq(1), "firms_sources"].eq("VIIRS_SNPP_SP").all()
     assert stats["null_cells_after_filter"] == 0

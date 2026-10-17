@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
+from shapely import covers, points
+from shapely.geometry import shape
 
 from .config import ROOT, get_settings
 from .demo import save_demo_dataset
@@ -22,6 +24,15 @@ DATA_PATH = ROOT / "data" / "processed" / "real_daily.csv"
 DEMO_DATA_PATH = ROOT / "data" / "demo" / "daily.csv"
 MODEL_PATH = ROOT / "models" / "wildfire_real.joblib"
 METRICS_PATH = ROOT / "reports" / "real_metrics.json"
+ALTERNATE_GAP_SOURCES = (
+    "VIIRS_NOAA20_SP",
+    "VIIRS_NOAA20_NRT",
+    "VIIRS_NOAA21_NRT",
+    "MODIS_SP",
+    "MODIS_NRT",
+)
+ALTERNATE_GAP_START = date(2026, 7, 1)
+ALTERNATE_GAP_END = date(2026, 8, 20)
 
 
 def ingest_data(firms_csv: Path | None = None) -> Path:
@@ -31,6 +42,7 @@ def ingest_data(firms_csv: Path | None = None) -> Path:
     raw_dir = ROOT / "data" / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
     source_coverage = {}
+    source_frames = []
     if firms_csv is None:
         standard = fetch_firms_history(
             settings.firms_key,
@@ -81,19 +93,116 @@ def ingest_data(firms_csv: Path | None = None) -> Path:
                 "requested_start_date": nrt_start.isoformat(),
                 "requested_end_date": settings.end_date.isoformat(),
             }
-        fires = pd.concat(source_frames, ignore_index=True)
+        gap_start = ALTERNATE_GAP_START
+        gap_end = ALTERNATE_GAP_END
+        if settings.start_date > gap_start or settings.end_date < gap_end:
+            gap_sources = ()
+        else:
+            gap_sources = ALTERNATE_GAP_SOURCES
+        for source in gap_sources:
+            alternate = fetch_firms_history(
+                settings.firms_key,
+                source,
+                settings.area,
+                gap_start,
+                gap_end,
+                settings.request_timeout,
+                raw_dir=raw_dir,
+            )
+            alternate["firms_source"] = source
+            output = raw_dir / f"firms_{source.lower()}_gap.csv"
+            output.write_text(
+                alternate.drop(columns=["firms_source"]).to_csv(index=False),
+                encoding="utf-8",
+            )
+            source_frames.append(alternate)
+            source_coverage[source] = {
+                **_source_summary(alternate),
+                "requested_start_date": gap_start.isoformat(),
+                "requested_end_date": gap_end.isoformat(),
+            }
+
         identity_columns = [
             column
             for column in ("acq_date", "latitude", "longitude", "satellite", "instrument")
-            if column in fires.columns
+            if any(column in frame.columns for frame in source_frames)
         ]
-        fires = fires.drop_duplicates(subset=identity_columns, keep="first").reset_index(drop=True)
+        source_frames = [frame for frame in source_frames if not frame.empty]
+        if not source_frames:
+            raise ValueError("FIRMS returned no detections from any requested real source.")
+        fires = pd.concat(source_frames, ignore_index=True)
+        if identity_columns:
+            source_attribution = (
+                fires.groupby(identity_columns, dropna=False)["firms_source"]
+                .agg(lambda values: "|".join(sorted(set(values.astype(str)))))
+                .rename("firms_source")
+                .reset_index()
+            )
+            fires = (
+                fires.drop_duplicates(subset=identity_columns, keep="first")
+                .drop(columns=["firms_source"])
+                .merge(source_attribution, on=identity_columns, how="left", validate="one_to_one")
+                .reset_index(drop=True)
+            )
     else:
         fires = pd.read_csv(firms_csv)
         fires["firms_source"] = "local_firms_csv"
+        source_frames = [fires]
         source_coverage["local_firms_csv"] = _source_summary(fires)
 
     boundary_path = fetch_boundary_geojson(raw_dir / "madre_de_dios_boundary.geojson")
+    boundary_data = json.loads(boundary_path.read_text(encoding="utf-8"))
+    boundary = shape(boundary_data["features"][0]["geometry"])
+    for source_frame in source_frames:
+        source = source_frame["firms_source"].iloc[0]
+        source_coverage[source].update(_source_summary(source_frame, boundary))
+    alternative_gap_dates = set()
+    for source_frame in source_frames:
+        source = source_frame["firms_source"].iloc[0]
+        if source not in ALTERNATE_GAP_SOURCES:
+            continue
+        latitude = pd.to_numeric(source_frame["latitude"], errors="coerce")
+        longitude = pd.to_numeric(source_frame["longitude"], errors="coerce")
+        valid = latitude.notna() & longitude.notna()
+        inside = pd.Series(False, index=source_frame.index)
+        inside.loc[valid] = covers(
+            boundary,
+            points(longitude.loc[valid].to_numpy(), latitude.loc[valid].to_numpy()),
+        )
+        dates = pd.to_datetime(source_frame.loc[inside, "acq_date"], errors="coerce")
+        alternative_gap_dates.update(
+            dates.dropna()
+            .loc[
+                lambda values: values.between(
+                    pd.Timestamp(gap_start), pd.Timestamp(gap_end)
+                )
+            ]
+            .dt.strftime("%Y-%m-%d")
+            .tolist()
+        )
+    gap_day_count = (gap_end - gap_start).days + 1
+    (ROOT / "reports" / "firms_gap_alternative_sources.json").write_text(
+        json.dumps(
+            {
+                "requested_start_date": gap_start.isoformat(),
+                "requested_end_date": gap_end.isoformat(),
+                "requested_days_inclusive": gap_day_count,
+                "days_with_at_least_one_in_boundary_detection": len(alternative_gap_dates),
+                "days_without_returned_in_boundary_detections": gap_day_count
+                - len(alternative_gap_dates),
+                "sources": {
+                    source: source_coverage[source] for source in ALTERNATE_GAP_SOURCES
+                },
+                "note": (
+                    "Products remain separately attributed; a day without a returned "
+                    "detection is not evidence of no fire or satellite coverage."
+                ),
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     grid = create_grid(
         settings.area,
         settings.grid_cell_degrees,
@@ -127,6 +236,10 @@ def ingest_data(firms_csv: Path | None = None) -> Path:
                 "requested_start_date": settings.start_date.isoformat(),
                 "requested_end_date": settings.end_date.isoformat(),
                 "firms_sources": source_coverage,
+                "source_sensor_note": (
+                    "SNPP labels are supplemented with separately attributed "
+                    "NOAA20, NOAA21 and MODIS products only during the coverage gap."
+                ),
                 "features": feature_stats,
                 "rows": int(len(dataset)),
                 "positive_grid_days": int(dataset["label"].sum()),
@@ -141,15 +254,45 @@ def ingest_data(firms_csv: Path | None = None) -> Path:
     return DATA_PATH
 
 
-def _source_summary(frame: pd.DataFrame) -> dict:
+def _source_summary(frame: pd.DataFrame, boundary=None) -> dict:
     if frame.empty:
-        return {"detections": 0, "first_detection": None, "last_detection": None}
+        summary = {"detections": 0, "first_detection": None, "last_detection": None}
+        if boundary is not None:
+            summary.update(
+                {
+                    "detections_in_administrative_boundary": 0,
+                    "active_dates_in_administrative_boundary": 0,
+                    "first_boundary_detection": None,
+                    "last_boundary_detection": None,
+                }
+            )
+        return summary
     dates = pd.to_datetime(frame["acq_date"], errors="coerce").dropna()
-    return {
+    result = {
         "detections": int(len(frame)),
         "first_detection": dates.min().date().isoformat() if not dates.empty else None,
         "last_detection": dates.max().date().isoformat() if not dates.empty else None,
     }
+    if boundary is not None and {"latitude", "longitude"}.issubset(frame.columns):
+        latitude = pd.to_numeric(frame["latitude"], errors="coerce")
+        longitude = pd.to_numeric(frame["longitude"], errors="coerce")
+        valid = latitude.notna() & longitude.notna()
+        inside = pd.Series(False, index=frame.index)
+        inside.loc[valid] = covers(
+            boundary,
+            points(longitude.loc[valid].to_numpy(), latitude.loc[valid].to_numpy()),
+        )
+        inside_frame = frame.loc[inside]
+        inside_dates = pd.to_datetime(inside_frame["acq_date"], errors="coerce").dropna()
+        result["detections_in_administrative_boundary"] = int(len(inside_frame))
+        result["active_dates_in_administrative_boundary"] = int(inside_dates.nunique())
+        result["first_boundary_detection"] = (
+            inside_dates.min().date().isoformat() if not inside_dates.empty else None
+        )
+        result["last_boundary_detection"] = (
+            inside_dates.max().date().isoformat() if not inside_dates.empty else None
+        )
+    return result
 
 
 def main() -> None:

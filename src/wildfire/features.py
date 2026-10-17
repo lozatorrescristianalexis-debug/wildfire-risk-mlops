@@ -92,6 +92,8 @@ def engineer_grid_daily(
         raise ValueError(f"Weather data must contain {', '.join(sorted(required_weather))}.")
 
     observations = fires.copy()
+    if "firms_source" not in observations:
+        observations["firms_source"] = "unknown_firms_product"
     observations["acq_date"] = pd.to_datetime(observations["acq_date"], errors="coerce").dt.strftime(
         "%Y-%m-%d"
     )
@@ -123,12 +125,13 @@ def engineer_grid_daily(
     observation_keys = pd.MultiIndex.from_frame(observations[["grid_row", "grid_column"]])
     observations["cell_id"] = cell_lookup.reindex(observation_keys).to_numpy()
     observations = observations.dropna(subset=["cell_id"])
-    fires_by_cell_day = (
-        observations.groupby(["cell_id", "acq_date"])
-        .size()
-        .rename("fire_count")
-        .reset_index()
-        .rename(columns={"acq_date": "date"})
+    fire_groups = observations.groupby(["cell_id", "acq_date"])
+    fires_by_cell_day = fire_groups.size().rename("fire_count").to_frame()
+    fires_by_cell_day["firms_sources"] = fire_groups["firms_source"].agg(
+        lambda values: "|".join(sorted(set(values.astype(str))))
+    )
+    fires_by_cell_day = fires_by_cell_day.reset_index().rename(
+        columns={"acq_date": "date"}
     )
     total_detections = int(len(observations))
 
@@ -149,6 +152,7 @@ def engineer_grid_daily(
         .merge(grid, on="cell_id", how="left", validate="many_to_one")
     )
     data["fire_count"] = data["fire_count"].fillna(0).astype("int64")
+    data["firms_sources"] = data["firms_sources"].fillna("none")
     data["label"] = data["fire_count"].gt(0).astype("int64")
     data = data.sort_values(["cell_id", "date"]).reset_index(drop=True)
     grouped = data.groupby("cell_id", sort=False)

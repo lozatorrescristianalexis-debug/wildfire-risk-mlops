@@ -21,9 +21,11 @@ models/*
 *.onnx
 *.pt
 *.pth
+!models/wildfire_real.joblib
 
 logs/*
 !logs/.gitkeep
 reports/metrics.json
 reports/real_metrics.json
+!reports/real_metrics.json
 reports/demo/*
