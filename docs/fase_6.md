@@ -45,11 +45,21 @@ modelo XGBoost y metricas reales. Las respuestas completas estan en
 `reports/docker_http_evidence.json`; no se usaron datos de demo para esta
 prueba.
 
-## Limite de la validacion remota
+## Validacion remota
 
-Estas son ejecuciones locales reales de lint, pruebas, build y HTTP. No se
-presenta una corrida de GitHub Actions, descarga programada, reentrenamiento
-remoto o despliegue como ejecutada hasta verificarla en GitHub. El workflow de
-CD necesita `HF_TOKEN` y `HF_SPACE`; las automatizaciones que descargan FIRMS
-necesitan `MAP_KEY`. Los valores deben cargarse como secretos/variables de
-Actions, nunca en el repositorio.
+GitHub Actions inicio dos corridas CI al publicar los cambios:
+
+- [CI run 1, 39072309838](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39072309838), commit `2cb1f44`.
+- [CI run 2, 39072336776](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39072336776), commit `4dc1903`.
+
+Ambas corridas CI finalizaron `success`, incluidos pytest con cobertura, Ruff,
+validacion Compose y build Docker.
+
+La corrida [CD 39072309839](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39072309839)
+finalizo con `success` solo para el job de configuracion; el job de despliegue
+se omitio porque aun faltaban `HF_TOKEN` y `HF_SPACE`. Por tanto, no se afirma
+que hubiera una publicacion en Hugging Face.
+
+No hubo corridas de descarga/reentrenamiento/monitoreo. Para ejecutarlas se
+requiere configurar el secret `MAP_KEY`; para despliegue real hacen falta
+`HF_TOKEN` y `HF_SPACE`. Los valores se guardan unicamente en Actions.

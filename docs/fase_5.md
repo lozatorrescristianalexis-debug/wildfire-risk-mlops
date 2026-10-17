@@ -35,10 +35,24 @@ no se solicitan ni se guardan en el repo. El workflow CD deja una anotacion
 explicita cuando no se configura el destino. La descarga/reentrenamiento
 requieren el secret FIRMS y no se reportan aqui como ejecuciones completadas.
 
-## Ejecucion observada
+## Ejecucion observada en GitHub Actions
 
-La verificacion local de CI se documenta junto con sus resultados finales en
-`docs/fase_6.md`. Los workflows se agregaron a la rama `main`; la ejecucion
-remota y sus identificadores/estados se reportaran solo despues de consultar
-GitHub Actions. Un archivo YAML presente en el repositorio no es evidencia de
-una corrida remota.
+GitHub Actions registra los cinco workflows como activos. Tras publicar los
+cambios, la corrida CD **39072309839** termino `success`; su job
+`deployment-configuration` paso y `deploy` quedo `skipped`, por lo que no hubo
+despliegue remoto. El log publico indica que faltan `HF_SPACE` y `HF_TOKEN`.
+
+Las corridas CI **39072309838** (run 1, commit `2cb1f44`) y **39072336776**
+(run 2, commit `4dc1903`) terminaron `success`: en ambas completaron
+instalacion, Ruff, pytest con cobertura, validacion Compose y build Docker.
+No se encontraron corridas de `data_update.yml`, `retrain.yml` ni
+`monitoring.yml`: las dos ultimas dependen de una descarga exitosa y el refresh
+requiere el secret `MAP_KEY`.
+
+Enlaces de las corridas consultadas:
+
+- [CD 39072309839](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39072309839)
+- [CI 39072309838](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39072309838)
+- [CI 39072336776](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39072336776)
+
+La verificacion local de CI y pruebas se documenta en `docs/fase_6.md`.
