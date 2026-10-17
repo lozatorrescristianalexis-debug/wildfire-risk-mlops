@@ -8,62 +8,54 @@ necesarios para inferencia:
 - `models/wildfire_real.joblib` (402.371 bytes).
 - `reports/real_metrics.json` (metadatos, features, umbral y resultados).
 
-Son archivos pequenos, reproducibles y generados por este proyecto. Esta
-opcion evita depender de un volumen local, un registro externo de modelos o una
-descarga de artefactos en tiempo de arranque. `.gitignore` mantiene ignorados
-los modelos restantes y los datos. `Dockerfile` copia solamente codigo, web,
-modelo y metadatos. `.dockerignore` excluye expresamente `.env`, `data/raw/`,
-`data/processed/` y caches; los datos crudos no forman parte de la imagen,
-Git ni de la carga de despliegue.
+Esta opcion evita depender de un volumen local, un registro externo de modelos
+o una descarga en tiempo de arranque. `Dockerfile` copia codigo, web, modelo y
+metadatos; `.dockerignore` excluye `.env`, `data/raw/`, `data/processed/` y
+caches. El usuario del contenedor no es root y hay healthcheck HTTP.
 
-## Build y prueba local observados
+## Build y prueba local
 
-Con Docker Desktop activo:
+`docker compose config --quiet` y `docker compose up -d` terminaron con codigo
+0. Se construyo la imagen multi-stage `wildfire-risk-mlops:latest`; la prueba
+HTTP local obtuvo 200 en `/health`, `/model-info`, `/predict`, `/openapi.json`
+y `/`. Una inspeccion dentro del contenedor verifico que el modelo y
+`reports/real_metrics.json` estan presentes y `.env`, `data/raw` y
+`data/processed` no existen. Evidencia: `reports/docker_http_evidence.json`.
 
-```powershell
-docker compose config --quiet
-docker compose up -d
-```
+## Despliegue y smoke test publico
 
-Ambos comandos terminaron con codigo 0. Compose creo y arranco el servicio
-`api`. Se hizo build multi-stage de `python:3.11-slim`; Docker informo
-`Successfully installed` para las dependencias y exporto la imagen
-`wildfire-risk-mlops:latest` sin errores. El contenedor usa usuario no
-privilegiado y healthcheck HTTP. Compose publica el puerto local 8000 hacia
-7860 y aplica su propio healthcheck.
+La aplicacion esta desplegada por el propietario en **Render Web Service,
+Docker, plan Free**, con auto-deploy desde `main`:
 
-Cliente `requests` contra `http://127.0.0.1:8000`:
+`https://wildfire-risk-mlops.onrender.com`
 
-| Ruta | Resultado observado |
-| --- | --- |
-| `GET /health` | HTTP 200, `status=ok`, `model_loaded=true` |
-| `GET /model-info` | HTTP 200, XGBoost real, periodo 2024-11-11–2026-10-10 |
-| `POST /predict` | HTTP 200; celda `r013_c007`, fecha 2026-10-10, probabilidad `0.0714573`, umbral `0.6532685`, clase `false` |
-| `GET /openapi.json` | HTTP 200, incluye `/health`, `/model-info`, `/predict` |
-| `GET /` | HTTP 200, frontend identificado |
+Se llamo al endpoint publico usando `requests`, timeout de lectura de 75 s,
+hasta seis intentos y pausa de 10 s (la instancia respondio en el primer
+intento de cada ruta):
 
-Inspeccion dentro del contenedor confirmo que `.env`, `data/raw`,
-`data/processed` no existen, mientras que `models/wildfire_real.joblib` y
-`reports/real_metrics.json` si existen. Respuestas observadas y verificacion
-de contenido: `reports/docker_http_evidence.json`. La exclusion tambien esta
-aplicada en `.gitignore`; `git ls-files data/raw .env` no encontro archivos
-sensibles versionados.
+| Solicitud | Estado | Respuesta real |
+| --- | ---: | --- |
+| `GET /health` | 200 | `{"status":"ok","model_loaded":true}` |
+| `GET /model-info` | 200 | `model=xgboost`, `data_source=firms_open_meteo`, rango `2024-11-11`–`2026-10-10`, umbral `0.6532685160636902`; F1 `0.5164960182`, precision `0.3628129995`, recall `0.8960526316`, ROC-AUC `0.92794585`, PR-AUC `0.5110301757`, matriz `[[6828,1196],[79,681]]` |
+| `POST /predict` | 200 | fila real `r013_c007`, fecha `2026-10-10`; probabilidad `0.0714572966`, umbral `0.6532685161`, `predicted_hotspot=false`, `model=xgboost` |
 
-## Plataforma gratuita y requisitos externos
+El cuerpo de prediccion uso las 13 features climaticas/locales de la fila real
+de `data/processed/real_daily.csv`, guardado previamente en
+`reports/api_http_evidence.json`. Respuestas literales y numero de intento:
+`reports/render_public_smoke.json`. Esta respuesta verifica el servicio activo;
+la prediccion es retrospectiva, no una alerta ni un pronostico.
 
-Recomendacion: Hugging Face Spaces con Docker / CPU Basic. Encaja con el
-Dockerfile y el modelo pequeno; es adecuado para una demostracion gratuita,
-pero puede dormir o estar sujeto a cuotas, sin SLA ni aptitud para alertas
-operativas.
+## Despliegue continuo y plan Free
 
-Para el despliegue remoto, el propietario debe crear una cuenta Hugging Face y
-un Space publico de tipo Docker, y configurar en GitHub Actions:
+Render ya esta conectado a `main` y realiza auto-deploy. El workflow
+`.github/workflows/cd.yml` cumple solo la funcion de smoke test despues de
+cualquier push a `main` y tambien permite `workflow_dispatch`. Lee la variable
+de Actions `APP_URL`, consulta en secuencia `/health`, `/model-info` y
+`/predict`, valida origen real/carga del modelo/probabilidad y reintenta por
+hasta 12 rondas. Cada solicitud permite 75 s de lectura y hay 10 s entre
+intentos para tolerar cold starts del plan Free.
 
-- Secret `HF_TOKEN`: token Hugging Face con permiso de escritura al Space.
-- Variable `HF_SPACE`: `usuario/nombre-del-space`.
-- Secret `MAP_KEY`: clave FIRMS, necesaria solo para `data_update.yml`.
-
-El workflow CD publica una allow-list y hace smoke test a `/health`. La carga
-no incluye `.env`, datos crudos, dataset procesado, caches ni claves. El
-despliegue externo y su smoke test aun no se ejecutaron: este entorno no tiene
-configurados `HF_TOKEN` ni `HF_SPACE`. No compartas los tokens por chat.
+La imagen no contiene `.env`, credenciales FIRMS ni datos crudos. Para las
+actualizaciones de datos en GitHub Actions, `MAP_KEY` debe estar almacenada
+como secret. Ningun token de despliegue de terceros es necesario para Render
+auto-deploy.

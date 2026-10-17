@@ -1,13 +1,3 @@
----
-title: Wildfire Hotspot Classifier
-emoji: 🔥
-colorFrom: green
-colorTo: yellow
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # Incendios forestales en Madre de Dios, Perú: FIRMS + Open-Meteo
 
 Pipeline de datos y aprendizaje automatico para estudiar detecciones activas de
@@ -186,31 +176,26 @@ docker run --rm -p 8000:7860 wildfire-firms
 Para desarrollo local se recomienda `docker compose up --build`; abre
 `http://localhost:8000` y supervisa `/health`.
 
-## Despliegue gratuito
+## Despliegue publico
 
-Se recomienda **Hugging Face Spaces con Docker y CPU Basic**: acepta Dockerfile,
-tiene un nivel gratuito adecuado para una demo de API/web y permite guardar un
-token de despliegue en GitHub Actions. La imagen contiene un modelo de 402 KB;
-no se necesita transferir el archivo de 10+ MB de datos procesados ni ningun
-raw. Los Spaces gratuitos pueden dormir o estar sujetos a cuotas; no es un SLA
-ni servicio de alertas.
+La aplicacion esta desplegada como **Render Web Service / Docker / Free** en
+[`https://wildfire-risk-mlops.onrender.com`](https://wildfire-risk-mlops.onrender.com).
+Render hace auto-deploy desde `main`; el workflow `cd.yml` no vuelve a publicar
+la imagen, sino que espera a que el despliegue termine y prueba `/health`,
+`/model-info` y `/predict` con una fila real. El servicio gratuito puede dormir;
+el workflow permite un tiempo de conexion de 15 segundos, timeout de respuesta
+de 75 segundos y hasta 12 intentos separados por 10 segundos.
 
-Para habilitar el workflow automatico:
+En GitHub Actions configura la variable `APP_URL` con la URL publica completa
+del Web Service. Para descarga automatica de FIRMS, agrega `MAP_KEY` como
+secret (nunca como variable visible). `retrain.yml` y `monitoring.yml` pueden
+ejecutarse manualmente especificando `data_run_id` de una ejecucion exitosa de
+`Refresh real FIRMS data`; tambien se disparan despues de una descarga exitosa.
 
-1. Crea una cuenta en Hugging Face y un Space publico con SDK Docker (o deja que
-   el workflow lo cree).
-2. Crea un token de Hugging Face con permiso de escritura para el Space.
-3. En GitHub, crea el secret `HF_TOKEN` con ese token y la variable de Actions
-   `HF_SPACE` con `usuario/nombre-del-space`.
-4. En GitHub Actions crea el secret `MAP_KEY` para el workflow de descarga
-   periodica. No uses una variable visible ni guardes la clave en el repo.
-
-El despliegue automatizado publica una lista permitida de archivos
-(Dockerfile, codigo, web, dependencias, modelo y metadatos); nunca publica
-`.env`, `data/raw/`, CSV procesados o cachés. `data_update.yml` transfiere el
-CSV procesado como artefacto temporal de Actions, no como commit ni raw.
-CI/build no requiere secretos. Los workflows de ingesta, reentrenamiento y
-despliegue no se completaran hasta configurar los secretos/variable anteriores.
+La imagen runtime copia el codigo, la UI, el modelo y sus metadatos, pero no
+incluye `.env`, `data/raw/` ni `data/processed/`. El workflow de datos transfiere
+el CSV integrado unicamente como artifact temporal de Actions, nunca los
+archivos crudos.
 
 ## Publicar en GitHub
 

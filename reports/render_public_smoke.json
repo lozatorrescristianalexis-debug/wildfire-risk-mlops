@@ -1,0 +1,66 @@
+{
+  "health": {
+    "status_code": 200,
+    "attempt": 1,
+    "response": {
+      "status": "ok",
+      "model_loaded": true
+    }
+  },
+  "model_info": {
+    "status_code": 200,
+    "attempt": 1,
+    "response": {
+      "model": "xgboost",
+      "data_source": "firms_open_meteo",
+      "date_start": "2024-11-11",
+      "date_end": "2026-10-10",
+      "selected_threshold": 0.6532685160636902,
+      "features": [
+        "temperature_2m_max_lag1",
+        "relative_humidity_2m_mean_lag1",
+        "precipitation_sum_lag1",
+        "wind_speed_10m_max_lag1",
+        "temperature_2m_max_mean_3d",
+        "temperature_2m_max_mean_7d",
+        "relative_humidity_2m_mean_mean_7d",
+        "wind_speed_10m_max_mean_7d",
+        "precipitation_sum_sum_3d",
+        "precipitation_sum_sum_7d",
+        "precipitation_sum_sum_30d",
+        "latitude",
+        "longitude"
+      ],
+      "test_metrics": {
+        "f1": 0.5164960182025028,
+        "precision": 0.36281299946723494,
+        "recall": 0.8960526315789473,
+        "roc_auc": 0.9279458499501496,
+        "pr_auc": 0.5110301756557621,
+        "threshold": 0.6532685160636902,
+        "confusion_matrix": [
+          [
+            6828,
+            1196
+          ],
+          [
+            79,
+            681
+          ]
+        ]
+      }
+    }
+  },
+  "predict": {
+    "status_code": 200,
+    "attempt": 1,
+    "response": {
+      "cell_id": "r013_c007",
+      "date": "2026-10-10",
+      "probability": 0.07145729660987854,
+      "threshold": 0.6532685160636902,
+      "predicted_hotspot": false,
+      "model": "xgboost"
+    }
+  }
+}

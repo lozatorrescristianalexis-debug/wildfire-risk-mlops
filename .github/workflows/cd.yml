@@ -3,110 +3,87 @@ name: CD
 on:
   push:
     branches: [main]
-    paths:
-      - Dockerfile
-      - README.md
-      - requirements.txt
-      - .dockerignore
-      - src/**
-      - web/**
-      - models/wildfire_real.joblib
-      - reports/real_metrics.json
-      - .github/workflows/cd.yml
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  deploy:
-    if: ${{ vars.HF_SPACE != '' }}
+  smoke-test-render:
+    if: ${{ vars.APP_URL != '' }}
     runs-on: ubuntu-latest
+    env:
+      APP_URL: ${{ vars.APP_URL }}
     steps:
-      - name: Validate deployment token without displaying its value
-        id: configuration
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          if [ -z "$HF_TOKEN" ]; then
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Deployment was not attempted. Configure the GitHub Actions secret HF_TOKEN."
-          else
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-            echo "Deployment token configured: yes"
-          fi
       - uses: actions/checkout@v4
-        if: ${{ steps.configuration.outputs.configured == 'true' }}
       - uses: actions/setup-python@v5
-        if: ${{ steps.configuration.outputs.configured == 'true' }}
         with:
           python-version: "3.11"
-      - name: Install deployment client
-        if: ${{ steps.configuration.outputs.configured == 'true' }}
-        run: python -m pip install huggingface_hub==0.31.2 requests==2.32.3
-      - name: Publish the allow-listed application files
-        if: ${{ steps.configuration.outputs.configured == 'true' }}
-        env:
-          HF_SPACE: ${{ vars.HF_SPACE }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          python - <<'PY'
-          import os
-          from huggingface_hub import HfApi
-
-          api = HfApi(token=os.environ["HF_TOKEN"])
-          repo_id = os.environ["HF_SPACE"]
-          api.create_repo(repo_id=repo_id, repo_type="space", space_sdk="docker", exist_ok=True)
-          api.upload_folder(
-              repo_id=repo_id,
-              repo_type="space",
-              folder_path=".",
-              allow_patterns=[
-                  "README.md",
-                  "Dockerfile",
-                  "requirements.txt",
-                  "src/**",
-                  "web/**",
-                  "models/wildfire_real.joblib",
-                  "reports/real_metrics.json",
-              ],
-              commit_message="Deploy wildfire classifier",
-          )
-          print(f"Published allow-listed application files to {repo_id}.")
-          PY
-      - name: Smoke test deployed health endpoint
-        if: ${{ steps.configuration.outputs.configured == 'true' }}
-        env:
-          HF_SPACE: ${{ vars.HF_SPACE }}
+      - name: Install smoke-test client
+        run: python -m pip install requests==2.32.3
+      - name: Wait for Render deploy and smoke-test real prediction
         run: |
           python - <<'PY'
           import json
           import os
           import time
-          from urllib.error import URLError
-          from urllib.request import urlopen
+          from pathlib import Path
 
-          space_url = "https://" + os.environ["HF_SPACE"].replace("/", "-") + ".hf.space"
-          last_error = None
-          for _ in range(24):
-              try:
-                  with urlopen(space_url + "/health", timeout=15) as response:
-                      payload = json.loads(response.read())
-                      if response.status == 200 and payload.get("model_loaded") is True:
-                          print("Deployed /health returned HTTP 200 with model_loaded=true.")
-                          break
-                      raise RuntimeError(f"Unexpected health response: {payload}")
-              except (URLError, TimeoutError) as exc:
-                  last_error = exc
-                  time.sleep(10)
-          else:
-              raise RuntimeError(f"Deployed health smoke test failed: {last_error}")
+          import requests
+
+          base_url = os.environ["APP_URL"].rstrip("/")
+          session = requests.Session()
+          checks = [
+              ("health", "GET", "/health", None),
+              ("model_info", "GET", "/model-info", None),
+              (
+                  "predict",
+                  "POST",
+                  "/predict",
+                  json.loads(Path("reports/api_http_evidence.json").read_text())["request"],
+              ),
+          ]
+          evidence = {}
+          for name, method, path, payload in checks:
+              last_error = None
+              for attempt in range(1, 13):
+                  try:
+                      response = session.request(
+                          method,
+                          base_url + path,
+                          json=payload,
+                          timeout=(15, 75),
+                      )
+                      response.raise_for_status()
+                      result = response.json()
+                      if name == "health" and result.get("model_loaded") is not True:
+                          raise RuntimeError(f"Health check did not load the model: {result}")
+                      if name == "model_info" and result.get("data_source") != "firms_open_meteo":
+                          raise RuntimeError(f"Unexpected model data source: {result}")
+                      if name == "predict" and not 0 <= result["probability"] <= 1:
+                          raise RuntimeError(f"Invalid prediction probability: {result}")
+                      evidence[name] = {
+                          "status_code": response.status_code,
+                          "attempt": attempt,
+                          "response": result,
+                      }
+                      print(f"{name}: HTTP {response.status_code} on attempt {attempt}")
+                      break
+                  except (requests.RequestException, ValueError, KeyError, RuntimeError) as exc:
+                      last_error = f"{type(exc).__name__}: {exc}"
+                      if attempt < 12:
+                          print(f"{name}: attempt {attempt} failed; retrying in 10 seconds ({last_error})")
+                          time.sleep(10)
+              else:
+                  raise RuntimeError(
+                      f"{name} failed after 12 attempts against {base_url}{path}: {last_error}"
+                  )
+          print(json.dumps(evidence, indent=2))
           PY
-
-  deployment-configuration:
-    if: ${{ vars.HF_SPACE == '' }}
+  render-url-configuration:
+    if: ${{ vars.APP_URL == '' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Explain required deployment configuration
+      - name: Explain missing Render URL
         run: |
-          echo "::notice::Deployment was not attempted. Configure the GitHub Actions variable HF_SPACE and secret HF_TOKEN as described in README.md."
+          echo "::error::Configure the GitHub Actions variable APP_URL with the public Render service URL."
