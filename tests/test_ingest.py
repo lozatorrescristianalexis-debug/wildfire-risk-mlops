@@ -288,3 +288,49 @@ def test_grid_daily_features_are_lagged_and_negatives_require_area_activity(tmp_
     assert dataset["data_source"].eq("firms_open_meteo").all()
     assert dataset.loc[dataset["label"].eq(1), "firms_sources"].eq("VIIRS_SNPP_SP").all()
     assert stats["null_cells_after_filter"] == 0
+
+
+def test_grid_daily_records_sensor_provenance_for_positive_and_negative_rows(tmp_path):
+    boundary = tmp_path / "boundary.geojson"
+    boundary.write_text(
+        '{"type":"FeatureCollection","features":[{"type":"Feature","geometry":'
+        '{"type":"Polygon","coordinates":[[[-72,-13],[-71,-13],[-71,-12],'
+        '[-72,-12],[-72,-13]]]},"properties":{}}]}',
+        encoding="utf-8",
+    )
+    grid = create_grid("-72,-13,-71,-12", 0.5, boundary)
+    dates = pd.date_range("2024-01-01", periods=40).strftime("%Y-%m-%d")
+    weather = pd.concat(
+        [
+            pd.DataFrame(
+                {
+                    "cell_id": cell.cell_id,
+                    "date": dates,
+                    "temperature_2m_max": [20] * 40,
+                    "relative_humidity_2m_mean": [50] * 40,
+                    "precipitation_sum": [0] * 40,
+                    "wind_speed_10m_max": [10] * 40,
+                }
+            )
+            for cell in grid.itertuples()
+        ],
+        ignore_index=True,
+    )
+    cell = grid.iloc[0]
+    fires = pd.DataFrame(
+        {
+            "acq_date": ["2024-02-05", "2024-02-05"],
+            "latitude": [cell.latitude, cell.latitude],
+            "longitude": [cell.longitude, cell.longitude],
+            "firms_source": ["VIIRS_NOAA21_NRT", "MODIS_NRT"],
+        }
+    )
+
+    dataset, _ = engineer_grid_daily(
+        fires, weather, grid, "2024-01-01", "2024-02-09", boundary
+    )
+
+    positive_sources = dataset.loc[dataset["label"].eq(1), "firms_sources"]
+    negative_sources = dataset.loc[dataset["label"].eq(0), "firms_sources"]
+    assert positive_sources.eq("MODIS_NRT|VIIRS_NOAA21_NRT").sum() == 1
+    assert negative_sources.eq("none").all()
