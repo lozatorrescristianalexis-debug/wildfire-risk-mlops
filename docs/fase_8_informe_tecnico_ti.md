@@ -139,6 +139,29 @@ clase `false`.
   reescribir historia; Render vuelve a desplegar `main`. Confirmar luego
   `/health` y `/model-info`. No desplegar un modelo no revisado manualmente.
 
+### Ejecucion observada de automatizaciones (17-oct-2026)
+
+- [Data update, run 39074137185](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39074137185):
+  job de descarga exitoso; rango solicitado `2024-10-10`–`2026-10-10`,
+  43.344 filas integradas de `2024-11-11` a `2026-10-10`, 2.218 positivas,
+  41.126 negativas y 7.206 detecciones retenidas. El artifact procesado se
+  subio correctamente; no contiene CSV FIRMS/Open-Meteo crudos.
+- [Retrain, run 39075036568](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39075036568):
+  se entrenaron cuatro candidatos, con 10 trials Optuna cada uno. El mejor
+  candidato por validacion temporal fue HistGradientBoosting con F1 `0.425635`,
+  frente al vigente `0.431636`. No hubo promocion. Por tanto, el modelo en
+  `main` y Render sigue siendo el XGBoost previamente evaluado y sus metricas
+  de produccion en la seccion 4 no se reemplazaron por las del candidato.
+  El candidato tuvo F1 `0.5090`, precision `0.3552`, recall `0.8974`,
+  ROC-AUC `0.9262`, PR-AUC `0.4806` y threshold `0.62653` en holdout; estos
+  valores son informativos y no constituyen el modelo desplegado.
+- [Monitoring, run 39075038467](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39075038467):
+  job exitoso; referencia `2026-06-13`–`2026-09-10` (9.072 filas) y ventana
+  reciente `2026-09-11`–`2026-10-10` (4.032 filas). Cambio absoluto de tasa
+  positiva `0.038057`; 9 features superaron PSI `0.20`. Requiere revision
+  operativa de distribuciones, etiquetas y calidad de fuente; el umbral de
+  PSI es alerta de monitoreo, no diagnostico automatico de degradacion.
+
 ## 6. Seguridad y datos sensibles
 
 - `.env`, `MAP_KEY`, respuestas crudas FIRMS/Open-Meteo, y dataset procesado
@@ -159,9 +182,10 @@ clase `false`.
   `39074089022`, job `smoke-test-render` success. Tras soporte manual
   agregado, corrida `39074115212` tambien paso el smoke test. Los enlaces se
   encuentran en [GitHub Actions](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions).
-- Las corridas de data update, retrain y monitoring se registraran aqui tras
-  completar el dispatch solicitado; no se adjudican resultados antes de leer
-  las ejecuciones y sus logs.
+- Los resultados reales del ciclo de datos, retraining y drift del 17-oct-2026
+  estan documentados en la seccion 5 y en [fase 5](./fase_5.md). La corrida
+  de reentrenamiento no supero el criterio temporal, de modo que no genero
+  despliegue ni cambio las metricas actuales del modelo.
 
 Fuentes versionadas de verdad: `reports/real_metrics.json`,
 `docs/fase_1.md`, `docs/fase_2.md`, `docs/fase_4.md` y logs/runs de Actions.

@@ -237,7 +237,12 @@ por sensor y 11 dias no tuvieron detecciones devueltas. Los resultados son
 retrospectivos y no un pronostico. El resumen
 detallado, la matriz de confusion y las figuras estan en
 [`docs/fase_1.md`](docs/fase_1.md), [`docs/fase_2.md`](docs/fase_2.md),
-[`docs/fase_3.md`](docs/fase_3.md) y [`docs/fase_4.md`](docs/fase_4.md). El
+[`docs/fase_3.md`](docs/fase_3.md), [`docs/fase_4.md`](docs/fase_4.md),
+[`docs/fase_5.md`](docs/fase_5.md), [`docs/fase_6.md`](docs/fase_6.md),
+[`docs/fase_7_guion_presentacion.md`](docs/fase_7_guion_presentacion.md),
+[`docs/fase_7_diapositivas.md`](docs/fase_7_diapositivas.md),
+[`docs/fase_8_informe_tecnico_ti.md`](docs/fase_8_informe_tecnico_ti.md) y
+[`docs/fase_9_auditoria_rubrica.md`](docs/fase_9_auditoria_rubrica.md). El
 dataset y los datos crudos se mantienen locales e ignorados; el modelo final y
 sus metricas se versionan para que el contenedor sea reproducible. `data-demo`
 sigue aislado y no forma parte de estos resultados.

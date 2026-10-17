@@ -45,6 +45,32 @@ reemplazado por el smoke test Render descrito arriba.
 El smoke test publico directo ya fue ejecutado: GET `/health`, GET
 `/model-info` y POST `/predict` respondieron HTTP 200 usando la app real de
 Render. Respuestas en `reports/render_public_smoke.json` y `docs/fase_4.md`.
-Los run IDs y resultados de los nuevos workflow dispatch de CD, data update,
-retrain y monitoring se agregaran una vez consultados en GitHub Actions; no se
-declaran exitosos antes de ver su conclusion.
+
+## Corridas observadas el 17-oct-2026
+
+- [Data update, run 39074137185](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39074137185):
+  job `download-real-data` finalizado en `success`; secreto comprobado como
+  configurado sin mostrar su valor; FIRMS y Open-Meteo descargados y artifact
+  `real-data-update` subido (1.771.037 bytes, retencion de 14 dias). Rango
+  solicitado `2024-10-10`–`2026-10-10`; dataset integrado: 43.344 filas,
+  `2024-11-11`–`2026-10-10`, 2.218 positivas, 41.126 negativas y 7.206
+  detecciones FIRMS retenidas. El inicio modelable posterior se debe a las
+  ventanas/lags. El artifact no incluye los CSV crudos.
+- [Retrain, run 39075036568](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39075036568):
+  `success`; 10 trials Optuna por modelo y cuatro modelos evaluados con
+  validacion temporal. El candidato seleccionado fue
+  HistGradientBoosting; su F1 de validacion temporal fue `0.425635`, menor que
+  el vigente `0.431636`. Resultado: **no promovido**; modelo y artefactos
+  versionados permanecen sin cambios. El F1 de test del candidato fue
+  `0.5090` y no se usa para decidir la promocion.
+- [Monitoring, run 39075038467](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39075038467):
+  `success`; comparo referencia `2026-06-13`–`2026-09-10` (9.072 filas) con
+  ventana reciente `2026-09-11`–`2026-10-10` (4.032 filas). El cambio absoluto
+  observado de tasa positiva fue `0.038057`; 9 features superaron PSI `0.20`.
+  El reporte fue publicado como artifact `real-data-drift-report` por 30 dias.
+  Es una senal para revision, no evidencia por si sola de fallo del modelo.
+
+El run de data update aparece con todos sus pasos exitosos y el artifact
+disponible; la API de Actions mantuvo temporalmente el estado agregado del run
+como `in_progress`, aunque el job `download-real-data` concluyo en `success`.
+Los runs manuales de retrain y monitoring concluyeron `success`.
