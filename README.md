@@ -1,3 +1,13 @@
+---
+title: Wildfire Hotspot Classifier
+emoji: 🔥
+colorFrom: green
+colorTo: yellow
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Incendios forestales en Madre de Dios, Perú: FIRMS + Open-Meteo
 
 Pipeline de datos y aprendizaje automatico para estudiar detecciones activas de
@@ -69,6 +79,26 @@ make run        # score del registro real mas reciente
 make test       # pruebas unitarias
 ```
 
+## API y aplicación web
+
+El servicio FastAPI carga el modelo real y `reports/real_metrics.json` al
+iniciar. Ejecuta localmente:
+
+```powershell
+docker compose up --build
+```
+
+Abre `http://localhost:8000/` para la interfaz (toda en inglés) y
+`http://localhost:8000/docs` para Swagger/OpenAPI. Endpoints:
+
+- `GET /health`: estado del servicio y del modelo cargado.
+- `GET /model-info`: modelo, periodo, features, umbral y métricas del holdout.
+- `POST /predict`: recibe `cell_id`, fecha ISO `date` y un objeto `features`
+  con las 13 features numéricas exactas que devuelve `/model-info`.
+
+Predicciones son retrospectivas, no alertas o pronósticos. La tabla web muestra
+la probabilidad, el umbral y la celda evaluada.
+
 En Windows, si no tienes GNU Make, los mismos atajos estan disponibles en
 PowerShell:
 
@@ -114,7 +144,8 @@ que el satelite haya sobrevolado la celda ni confirma ausencia de fuego.
 El conjunto real de celda-dia se guarda en `data/processed/real_daily.csv`,
 ignorado por Git. Incluye `date`, `cell_id`, `fire_count`, `label`, variables
 climaticas con rezagos, medias moviles y acumulados de precipitacion,
-coordenadas, `data_source=firms_open_meteo` y la definicion del negativo.
+coordenadas, `firms_sources` para atribuir sensores, `data_source=firms_open_meteo`
+y la definicion del negativo.
 
 ## Modelo, metricas y ejecucion
 
@@ -125,7 +156,9 @@ se guarda en `models/wildfire_real.joblib` y sus metricas en
 `reports/real_metrics.json`. Las metricas incluyen balance de clase completo y
 del holdout, intervalo de fechas, numero de detecciones, confusion matrix y
 scores. `make run` escribe la clasificacion retrospectiva en la terminal.
-Datos, modelos y metricas generadas no se versionan.
+El artefacto vigente del modelo y su metadata se versionan para poder construir
+la API y la imagen de produccion desde un clone; artefactos de otros modelos,
+datasets y datos crudos permanecen ignorados.
 
 `make data-demo` guarda datos unicamente en `data/demo/daily.csv`. Sirve para
 pruebas automatizadas y verificar que el CLI funciona sin secretos. `make train`
@@ -135,27 +168,58 @@ por defecto. No uses ni transcribas las antiguas metricas demo de
 
 ## Docker
 
+El build es multi-stage y copia solo codigo, web, el modelo real versionado y
+sus metadatos. El modelo (`models/wildfire_real.joblib`, 402 KB) y
+`reports/real_metrics.json` se versionan deliberadamente como artefactos de
+despliegue pequenos y reproducibles; los demas modelos siguen ignorados. Los
+datos procesados locales, todos los crudos de `data/raw/`, `.env` y claves no se
+copian a la imagen ni se suben a Git. Asi el contenedor no depende de un volumen
+local, registro de modelos externo o credenciales para cargar el modelo.
+
 Con Docker Desktop ejecutandose:
 
 ```powershell
 docker build -t wildfire-firms .
-docker run --rm wildfire-firms --help
-docker run --rm wildfire-firms data-demo --days 30
+docker run --rm -p 8000:7860 wildfire-firms
 ```
 
-La imagen expone el CLI como entrypoint. El segundo comando es un smoke test
-aislado: `--rm` elimina sus datos al terminar. Para conservar datos o usar
-credenciales, monta las carpetas y pasa la configuracion de forma segura; no
-incluyas `.env` en la imagen.
+Para desarrollo local se recomienda `docker compose up --build`; abre
+`http://localhost:8000` y supervisa `/health`.
+
+## Despliegue gratuito
+
+Se recomienda **Hugging Face Spaces con Docker y CPU Basic**: acepta Dockerfile,
+tiene un nivel gratuito adecuado para una demo de API/web y permite guardar un
+token de despliegue en GitHub Actions. La imagen contiene un modelo de 402 KB;
+no se necesita transferir el archivo de 10+ MB de datos procesados ni ningun
+raw. Los Spaces gratuitos pueden dormir o estar sujetos a cuotas; no es un SLA
+ni servicio de alertas.
+
+Para habilitar el workflow automatico:
+
+1. Crea una cuenta en Hugging Face y un Space publico con SDK Docker (o deja que
+   el workflow lo cree).
+2. Crea un token de Hugging Face con permiso de escritura para el Space.
+3. En GitHub, crea el secret `HF_TOKEN` con ese token y la variable de Actions
+   `HF_SPACE` con `usuario/nombre-del-space`.
+4. En GitHub Actions crea el secret `MAP_KEY` para el workflow de descarga
+   periodica. No uses una variable visible ni guardes la clave en el repo.
+
+El despliegue automatizado publica una lista permitida de archivos
+(Dockerfile, codigo, web, dependencias, modelo y metadatos); nunca publica
+`.env`, `data/raw/`, CSV procesados o cachés. `data_update.yml` transfiere el
+CSV procesado como artefacto temporal de Actions, no como commit ni raw.
+CI/build no requiere secretos. Los workflows de ingesta, reentrenamiento y
+despliegue no se completaran hasta configurar los secretos/variable anteriores.
 
 ## Publicar en GitHub
 
-Tras crear un repositorio vacio en GitHub (sin README ni licencia inicial),
-conecta y publica esta rama:
+El repositorio de este workspace ya esta conectado a `origin/main`. En un clone
+nuevo, configura un remoto HTTPS sin token embebido y publica la rama `main`:
 
 ```powershell
 git remote add origin https://github.com/<USUARIO>/<REPO>.git
-git push -u origin master
+git push -u origin main
 ```
 
 Git usara el mecanismo de autenticacion configurado en tu equipo. No pongas
@@ -170,21 +234,25 @@ tests/          Pruebas unitarias
 data/raw/       Entrada local; ignorada por Git
 data/processed/ Dataset diario real; ignorado por Git
 data/demo/      Datos sinteticos exclusivos de pruebas; ignorados por Git
-models/         Modelos entrenados; ignorados por Git
-reports/        Metricas y figuras
+models/         wildfire_real.joblib versionado; otros modelos ignorados
+reports/        real_metrics.json versionado; figuras y resultados locales
 notebooks/      Analisis opcional; la logica reutilizable vive en src/
 docs/fase_*.md  Alcance, comandos y resultados observados por fase
 ```
 
 ## Resultados de la ejecucion real
 
-La ejecucion real produjo 37.584 ejemplos celda-dia (1.964 positivos) entre
-`2024-11-11` y `2026-10-10`; el holdout temporal de XGBoost obtuvo F1 `0.5506`,
-precision `0.4014`, recall `0.8763`, ROC-AUC `0.9335` y PR-AUC `0.5252`.
+La ejecucion real multifuente produjo 43.344 ejemplos celda-dia (2.218 positivos) entre
+`2024-11-11` y `2026-10-10`; el holdout temporal de XGBoost obtuvo F1 `0.5165`,
+precision `0.3628`, recall `0.8961`, ROC-AUC `0.9279` y PR-AUC `0.5110`.
 FIRMS devolvio detecciones SP hasta `2026-06-30` y NRT desde `2026-08-21`;
-el periodo `2026-07-01`–`2026-08-20` queda sin detecciones observadas y no se
-relleno. Los resultados son retrospectivos y no un pronostico. El resumen
+fuentes NOAA20/NOAA21 NRT y MODIS aportaron detecciones en 40 de los 51 dias
+del intervalo `2026-07-01`–`2026-08-20`; los productos permanecen identificados
+por sensor y 11 dias no tuvieron detecciones devueltas. Los resultados son
+retrospectivos y no un pronostico. El resumen
 detallado, la matriz de confusion y las figuras estan en
-[`docs/fase_1.md`](docs/fase_1.md), [`docs/fase_2.md`](docs/fase_2.md) y
-[`docs/fase_4.md`](docs/fase_4.md). Los datos, modelo y metricas JSON se guardan
-localmente; `data-demo` sigue aislado y no forma parte de estos resultados.
+[`docs/fase_1.md`](docs/fase_1.md), [`docs/fase_2.md`](docs/fase_2.md),
+[`docs/fase_3.md`](docs/fase_3.md) y [`docs/fase_4.md`](docs/fase_4.md). El
+dataset y los datos crudos se mantienen locales e ignorados; el modelo final y
+sus metricas se versionan para que el contenedor sea reproducible. `data-demo`
+sigue aislado y no forma parte de estos resultados.
