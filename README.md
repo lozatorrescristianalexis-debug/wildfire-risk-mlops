@@ -1,16 +1,18 @@
-# Incendios forestales: FIRMS + Open-Meteo
+# Incendios forestales en Madre de Dios, Perú: FIRMS + Open-Meteo
 
-Pipeline didactico de datos y aprendizaje automatico para relacionar
-detecciones activas de incendios de NASA FIRMS con meteorologia diaria de
-Open-Meteo. El codigo reutilizable esta en `src/wildfire/`; no depende de
-notebooks.
+Pipeline de datos y aprendizaje automatico para estudiar detecciones activas de
+incendios NASA FIRMS y meteorologia diaria Open-Meteo en el departamento de
+Madre de Dios, Peru. El codigo reutilizable esta en `src/wildfire/`; no depende
+de notebooks.
 
 > **Importante:** el objetivo implementado es detectar si FIRMS registro un
 > hotspot en un dia usando meteorologia diaria de ese mismo dia. Es una
 > demostracion de clasificacion retrospectiva, no un nowcast, pronostico futuro,
 > alerta operativa ni estimacion causal del riesgo de incendio. Open-Meteo usa un
-> unico punto representativo del area, no datos meteorologicos de toda la
-> region. Las metricas de datos sinteticos no son evidencia de desempeno real.
+> unico punto representativo del departamento, no datos meteorologicos de toda
+> el area. La ausencia de detecciones FIRMS no prueba ausencia de incendios; la
+> cobertura depende de los sensores. Las metricas sinteticas son unicamente de
+> pruebas y no son evidencia del informe final.
 
 ## Requisitos
 
@@ -30,18 +32,26 @@ Copy-Item .env.example .env
 ```
 
 Abre `.env` localmente y asigna tu clave a `MAP_KEY`. Nunca pegues la clave en
-el codigo o en Git. `.env` esta excluido del repositorio.
+el codigo o en Git. `.env` esta excluido del repositorio. El proyecto lee la
+clave directamente desde `<workspace>/.env`.
 
 Opciones de configuracion:
 
 | Variable | Predeterminado | Descripcion |
 | --- | --- | --- |
 | `MAP_KEY` | vacio | Clave de API de NASA FIRMS; necesaria para `make data`. |
-| `FIRMS_SOURCE` | `VIIRS_SNPP_NRT` | Coleccion FIRMS activa. |
-| `FIRMS_AREA` | `-5,36,4,44` | Area `oeste,sur,este,norte` (longitudes y latitudes). |
-| `METEO_LATITUDE` | `40.4168` | Latitud del punto meteorologico representativo. |
-| `METEO_LONGITUDE` | `-3.7038` | Longitud del punto meteorologico representativo. |
-| `START_DATE`, `END_DATE` | ultimos diez dias | Periodo de descarga, formato `AAAA-MM-DD`; la API FIRMS devuelve solo sus diez dias mas recientes. Para fechas historicas usa `--firms-csv`. |
+| `FIRMS_SOURCE` | `VIIRS_SNPP_SP` | Coleccion VIIRS de procesamiento estandar para el archivo historico. |
+| `FIRMS_AREA` | `-72.4287387,-13.3413977,-68.6519906,-9.9069082` | Bounding box del departamento Madre de Dios en orden `oeste,sur,este,norte`. |
+| `METEO_LATITUDE` | `-12.0` | Punto representativo aproximado del centro geografico del departamento. |
+| `METEO_LONGITUDE` | `-70.25` | Punto representativo aproximado del centro geografico del departamento. |
+| `START_DATE`, `END_DATE` | 2 años completos hasta hace 7 dias (UTC) | Periodo `AAAA-MM-DD`; se exige al menos un año. |
+
+Se eligio Madre de Dios para delimitar el analisis a una sola unidad
+administrativa amazonica peruana, evitando mezclar departamentos y climas. La
+caja se deriva del bounding box de su relacion administrativa de OpenStreetMap
+(relacion [1891287](https://www.openstreetmap.org/relation/1891287)); FIRMS
+necesita un rectangulo, que puede incluir pequenas zonas fuera de la frontera.
+El punto meteorologico es representativo, no un promedio espacial.
 
 Para otras plataformas, crea el entorno virtual con Python 3.11, instala
 `requirements.txt` y ejecuta los mismos comandos Python indicados abajo.
@@ -51,10 +61,10 @@ Para otras plataformas, crea el entorno virtual con Python 3.11, instala
 Con el entorno virtual activado:
 
 ```text
-make data       # FIRMS + Open-Meteo (requiere MAP_KEY)
-make data-demo  # datos sinteticos reproducibles, sin red ni secretos
-make train      # entrenamiento y evaluacion cronologica 80/20
-make run        # probabilidad de hotspot para la fila mas reciente
+make data       # 2 años reales de FIRMS + Open-Meteo (requiere MAP_KEY)
+make data-demo  # demo aislada: solo para pruebas y tests
+make train      # entrena solo datos reales identificados como tales
+make run        # score del registro real mas reciente
 make test       # pruebas unitarias
 ```
 
@@ -73,37 +83,50 @@ estos subcomandos: `data`, `data-demo`, `train` o `run`.
 
 ## Ingesta y formato
 
-`make data` obtiene los hotspots de FIRMS para el area configurada y el clima
-diario del punto representativo en Open-Meteo. Como alternativa, proporciona un
-CSV FIRMS ya descargado:
+`make data` descarga el periodo historico predeterminado de dos años. FIRMS usa
+`VIIRS_SNPP_SP`; el historico se descarga en solicitudes secuenciales de un
+maximo de cinco dias (aprox. 147 solicitudes para dos años), conservador respecto
+a los limites del endpoint. Open-Meteo se
+consulta en bloques de 30 dias. La ejecucion guarda respuestas originales en
+`data/raw/` y la tabla diaria unida en `data/processed/real_daily.csv`. Los
+errores de red, autenticacion o respuesta incompleta detienen la ingesta; no se
+crean etiquetas ni clima sinteticos para reemplazar fallos. Como alternativa,
+proporciona un CSV FIRMS real ya descargado:
 
 ```text
 python -m src.wildfire.cli data --firms-csv data/raw/fires.csv
 ```
 
-El CSV debe contener `acq_date` (o `scan_date`/`date`). La descarga de area de
-FIRMS solo cubre hasta diez dias; un conjunto tan corto puede no ser suficiente
-para entrenar. Para entrenar con datos reales, prepara un historial FIRMS con
-cobertura consistente, configura un periodo compatible y consulta las
-limitaciones y licencias de los proveedores. No etiquetes como ausencia real
-un dia que carezca de cobertura satelital.
+El CSV debe contener `acq_date`, `latitude` y `longitude`. El periodo efectivo
+se configura en `.env`; la ingesta se detiene si es menor de un año. No
+etiquetes como ausencia de fuego un dia sin cobertura satelital adecuada.
 
-El conjunto diario se guarda en `data/processed/daily.csv`, ignorado por Git.
+La clase 1 significa "al menos una deteccion activa FIRMS en ese dia y
+rectangulo"; clase 0 significa "ninguna deteccion devuelta". No es una verdad
+terrestre completa sobre igniciones/incendios, por limitaciones de paso
+satelital, nubes y resolucion.
+
+El conjunto real se guarda en `data/processed/real_daily.csv`, ignorado por Git.
 Columnas: `date`, `fire_count`, `label`, `temperature_2m_max`,
 `relative_humidity_2m_mean`, `precipitation_sum`, `wind_speed_10m_max`,
-`latitude` y `longitude`.
+`latitude`, `longitude` y `data_source=firms_open_meteo`.
 
 ## Modelo, metricas y ejecucion
 
-El entrenamiento exige ambas clases en train y test y usa una particion
-cronologica, sin mezclar el futuro con el pasado. El modelo se guarda en
-`models/wildfire.joblib` y las metricas/intervalo evaluado en
-`reports/metrics.json`. `make run` escribe el resultado JSON en la terminal.
-Datos, modelos y logs generados no se versionan.
+El entrenamiento final exige una fuente `firms_open_meteo`, al menos un año,
+ambas clases en train y test y una particion cronologica 80/20. La demo esta
+marcada como `synthetic_demo` y el entrenador de CLI la rechaza. El modelo real
+se guarda en `models/wildfire_real.joblib` y sus metricas en
+`reports/real_metrics.json`. Las metricas incluyen balance de clase completo y
+del holdout, intervalo de fechas, numero de detecciones, confusion matrix y
+scores. `make run` escribe la clasificacion retrospectiva en la terminal.
+Datos, modelos y metricas generadas no se versionan.
 
-`make data-demo` construye un conjunto determinista sintetico para validar
-instalacion y ejecucion sin clave. Etiquetas, puntuaciones y metricas de este
-conjunto no deben presentarse como resultados con datos reales.
+`make data-demo` guarda datos unicamente en `data/demo/daily.csv`. Sirve para
+pruebas automatizadas y verificar que el CLI funciona sin secretos. `make train`
+y `make run` nunca usan esa ruta, y `train_model` rechaza esa etiqueta de origen
+por defecto. No uses ni transcribas las antiguas metricas demo de
+`docs/fase_2.md` al informe.
 
 ## Docker
 
@@ -137,10 +160,11 @@ muestre al crear el repositorio.
 ## Estructura
 
 ```text
-src/wildfire/   Configuracion, ingesta, generacion demo, modelo y CLI
+src/wildfire/   Configuracion, ingesta real, generacion demo aislada, modelo y CLI
 tests/          Pruebas unitarias
 data/raw/       Entrada local; ignorada por Git
-data/processed/ Datos derivados; ignorados por Git
+data/processed/ Dataset diario real; ignorado por Git
+data/demo/      Datos sinteticos exclusivos de pruebas; ignorados por Git
 models/         Modelos entrenados; ignorados por Git
 reports/        Metricas y figuras
 notebooks/      Analisis opcional; la logica reutilizable vive en src/
@@ -150,5 +174,7 @@ docs/fase_*.md  Alcance, comandos y resultados observados por fase
 ## Resultados del entorno de desarrollo
 
 Consulta [docs/fase_0.md](docs/fase_0.md), [docs/fase_1.md](docs/fase_1.md),
-[docs/fase_2.md](docs/fase_2.md) y [docs/fase_3.md](docs/fase_3.md) para
-resultados reales, evidencia y limitaciones de cada fase.
+[docs/fase_2.md](docs/fase_2.md), [docs/fase_3.md](docs/fase_3.md) y
+[docs/fase_4.md](docs/fase_4.md) para evidencia y limitaciones. Solo
+`reports/real_metrics.json` debe usarse para el informe, y solo despues de
+completar una ingesta real verificable.

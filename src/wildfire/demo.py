@@ -34,6 +34,7 @@ def make_demo_dataset(days: int = 1095, seed: int = 42) -> pd.DataFrame:
             "longitude": -3.7038,
             "fire_count": label * rng.integers(1, 5, size=days),
             "label": label,
+            "data_source": "synthetic_demo",
         }
     )
 

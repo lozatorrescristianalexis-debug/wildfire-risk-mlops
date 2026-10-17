@@ -5,9 +5,12 @@
 __pycache__
 data/raw
 data/processed
+data/demo
 models/*
 !models/.gitkeep
 logs
 reports/metrics.json
+reports/real_metrics.json
+reports/demo
 tests
 notebooks

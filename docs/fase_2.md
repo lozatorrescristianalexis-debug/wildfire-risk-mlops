@@ -1,6 +1,6 @@
 # Fase 2: entrenamiento y evaluacion
 
-## Alcance y limitaciones
+## Registro historico de desarrollo (no usar en el informe final)
 
 El pipeline entrena un clasificador Random Forest reproducible y evalua en un
 bloque cronologico de fechas posteriores (80/20), guardando metricas de
@@ -8,17 +8,20 @@ clasificacion. La etiqueta representa una deteccion FIRMS del mismo dia y las
 variables incluyen el tiempo de ese dia; esto es retrospectivo, no un nowcast,
 pronostico de incendios futuros ni estimacion de riesgo causal.
 
-`make data-demo` genera datos sinteticos deterministas para probar el flujo
-completo sin credenciales. Sus metricas solo prueban la ejecucion del software:
-no representan validez cientifica ni desempeno con incendios reales.
+En la implementacion inicial `data-demo` genero datos sinteticos deterministas
+para probar el software. Los numeros guardados abajo son exclusivamente
+evidencia de prueba del codigo; **no son resultados del trabajo final, no son
+datos reales y deben excluirse del informe y exposicion**. La version actual
+aisla esas salidas en `data/demo/`, `models/demo/` y `reports/demo/`, y bloquea
+su uso en entrenamiento final.
 
 ## Archivos principales
 
 - `src/wildfire/demo.py`: conjunto sintetico para demostracion.
 - `src/wildfire/model.py`: validacion, particion cronologica, ajuste y scoring.
 - `tests/test_model.py`: pruebas de reproducibilidad y ciclo de entrenamiento.
-- Salidas locales: `data/processed/daily.csv`, `models/wildfire.joblib` y
-  `reports/metrics.json` (ignoradas por Git donde aplica).
+- Salidas iniciales movidas a directorios demo: `data/demo/daily.csv`,
+  `models/demo/wildfire.joblib` y `reports/demo/metrics.json` (ignoradas por Git).
 
 ## Resultados y evidencia
 
@@ -32,8 +35,8 @@ no representan validez cientifica ni desempeno con incendios reales.
   interpretar esto como resultado de deteccion de incendios reales.
 - El resultado del ejemplo mas reciente fue una probabilidad `0.0000`,
   prediccion `0`, etiqueta sintetica observada `0`, fecha `2025-12-31`.
-- Evidencias locales ignoradas: `models/wildfire.joblib` y
-  `reports/metrics.json`.
+- Evidencias sinteticas locales ignoradas: `models/demo/wildfire.joblib` y
+  `reports/demo/metrics.json`.
 - No se generaron figuras ni logs de ejecucion; las metricas del experimento
   estan en el JSON indicado, que se excluye de Git junto al modelo.
 - `.\.venv\Scripts\python.exe -m pytest -q` -> 11 pruebas pasaron sin warnings.

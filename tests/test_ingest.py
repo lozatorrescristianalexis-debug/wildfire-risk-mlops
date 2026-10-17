@@ -4,7 +4,15 @@ import pandas as pd
 import pytest
 import requests
 
-from src.wildfire.ingest import build_daily_dataset, fetch_firms, fetch_weather, normalize_firms
+from src.wildfire.ingest import (
+    FIRMS_MAX_DAYS_PER_REQUEST,
+    build_daily_dataset,
+    fetch_firms,
+    fetch_firms_history,
+    fetch_weather,
+    fetch_weather_history,
+    normalize_firms,
+)
 
 
 class Response:
@@ -35,8 +43,8 @@ def test_firms_requires_api_key():
 
 
 def test_fetch_firms_parses_csv_and_uses_timeout():
-    session = Session(Response("acq_date,latitude\n2025-01-01,40.0\n"))
-    result = fetch_firms("test-key", "VIIRS_SNPP_NRT", "-5,36,4,44", session=session)
+    session = Session(Response("acq_date,latitude,longitude\n2025-01-01,-12,-70\n"))
+    result = fetch_firms("test-key", "VIIRS_SNPP_SP", "-72,-13,-68,-9", session=session)
     assert result.loc[0, "acq_date"] == "2025-01-01"
     assert session.calls[0][1]["timeout"] == 30
     assert "test-key" in session.calls[0][0]
@@ -48,7 +56,7 @@ def test_firms_request_errors_do_not_expose_api_key():
             raise requests.ConnectionError("failed for https://example.invalid/test-key")
 
     with pytest.raises(RuntimeError, match="FIRMS request failed") as error:
-        fetch_firms("test-key", "VIIRS_SNPP_NRT", "-5,36,4,44", session=Session(FailingResponse()))
+        fetch_firms("test-key", "VIIRS_SNPP_SP", "-72,-13,-68,-9", session=Session(FailingResponse()))
     assert "test-key" not in str(error.value)
 
 
@@ -75,6 +83,7 @@ def test_build_daily_dataset_labels_observed_and_unobserved_days():
     result = build_daily_dataset(fires, weather, date(2025, 1, 1), date(2025, 1, 3), 40, -3)
     assert result["label"].tolist() == [0, 1, 0]
     assert result["fire_count"].tolist() == [0, 1, 0]
+    assert set(result["data_source"]) == {"firms_open_meteo"}
     assert result.loc[0, "latitude"] == 40
 
 
@@ -116,3 +125,60 @@ def test_fetch_weather_calls_archive_api():
     result = fetch_weather(40, -3, date(2025, 1, 1), date(2025, 1, 1), session=session)
     assert len(result) == 1
     assert session.calls[0][1]["params"]["latitude"] == 40
+
+
+def test_firms_historical_requests_are_chunked_to_api_limit():
+    class DatedSession:
+        def __init__(self):
+            self.calls = []
+
+        def get(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            chunk_date = url.rsplit("/", 1)[-1]
+            return Response(f"acq_date,latitude,longitude\n{chunk_date},-12,-70\n")
+
+    session = DatedSession()
+    result = fetch_firms_history(
+        "test-key",
+        "VIIRS_SNPP_SP",
+        "-72,-13,-68,-9",
+        date(2024, 1, 1),
+        date(2024, 1, 11),
+        session=session,
+    )
+    assert FIRMS_MAX_DAYS_PER_REQUEST == 5
+    assert len(session.calls) == 3
+    assert [call[0].rsplit("/", 2)[-2] for call in session.calls] == ["5", "5", "1"]
+    assert result["acq_date"].tolist() == ["2024-01-01", "2024-01-06", "2024-01-11"]
+
+
+def test_weather_history_uses_bounded_requests():
+    class DatedWeatherSession:
+        def __init__(self):
+            self.calls = []
+
+        def get(self, url, **kwargs):
+            self.calls.append(kwargs["params"])
+            start = pd.Timestamp(kwargs["params"]["start_date"])
+            end = pd.Timestamp(kwargs["params"]["end_date"])
+            dates = pd.date_range(start, end).strftime("%Y-%m-%d").tolist()
+            return Response(
+                payload={
+                    "daily": {
+                        "time": dates,
+                        "temperature_2m_max": [20] * len(dates),
+                        "relative_humidity_2m_mean": [50] * len(dates),
+                        "precipitation_sum": [0] * len(dates),
+                        "wind_speed_10m_max": [10] * len(dates),
+                    }
+                }
+            )
+
+    session = DatedWeatherSession()
+    weather = fetch_weather_history(40, -3, date(2024, 1, 1), date(2024, 2, 1), session=session)
+    assert len(session.calls) == 2
+    assert [len(pd.date_range(call["start_date"], call["end_date"])) for call in session.calls] == [
+        30,
+        2,
+    ]
+    assert len(weather) == 32

@@ -10,6 +10,8 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+data/demo/*
+!data/demo/.gitkeep
 
 models/*
 !models/.gitkeep
@@ -23,3 +25,5 @@ models/*
 logs/*
 !logs/.gitkeep
 reports/metrics.json
+reports/real_metrics.json
+reports/demo/*
