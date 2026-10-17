@@ -5,14 +5,14 @@ incendios NASA FIRMS y meteorologia diaria Open-Meteo en el departamento de
 Madre de Dios, Peru. El codigo reutilizable esta en `src/wildfire/`; no depende
 de notebooks.
 
-> **Importante:** el objetivo implementado es detectar si FIRMS registro un
-> hotspot en un dia usando meteorologia diaria de ese mismo dia. Es una
-> demostracion de clasificacion retrospectiva, no un nowcast, pronostico futuro,
-> alerta operativa ni estimacion causal del riesgo de incendio. Open-Meteo usa un
-> unico punto representativo del departamento, no datos meteorologicos de toda
-> el area. La ausencia de detecciones FIRMS no prueba ausencia de incendios; la
-> cobertura depende de los sensores. Las metricas sinteticas son unicamente de
-> pruebas y no son evidencia del informe final.
+> **Importante:** el objetivo implementado es clasificar si FIRMS registro un
+> hotspot en una celda durante un dia, usando solo meteorologia de dias previos.
+> Es retrospectivo, no un nowcast, pronostico futuro, alerta operativa ni
+> estimacion causal del riesgo de incendio. Open-Meteo se consulta en una malla
+> espacial, no en un punto representativo. Los negativos se muestrean solo en
+> fechas con detecciones en alguna parte del departamento: son un proxy de
+> actividad satelital, no prueba de ausencia de fuego. Las metricas sinteticas
+> son unicamente de pruebas y no evidencia del informe final.
 
 ## Requisitos
 
@@ -44,7 +44,8 @@ Opciones de configuracion:
 | `FIRMS_AREA` | `-72.4287387,-13.3413977,-68.6519906,-9.9069082` | Bounding box del departamento Madre de Dios en orden `oeste,sur,este,norte`. |
 | `METEO_LATITUDE` | `-12.0` | Punto representativo aproximado del centro geografico del departamento. |
 | `METEO_LONGITUDE` | `-70.25` | Punto representativo aproximado del centro geografico del departamento. |
-| `START_DATE`, `END_DATE` | 2 años completos hasta hace 7 dias (UTC) | Periodo `AAAA-MM-DD`; se exige al menos un año. |
+| `START_DATE`, `END_DATE` | `2024-10-10`, `2026-10-10` | Periodo `AAAA-MM-DD`; se exige al menos un año. |
+| `GRID_CELL_DEGREES` | `0.25` | Resolucion angular de la malla recortada a la frontera administrativa. |
 
 Se eligio Madre de Dios para delimitar el analisis a una sola unidad
 administrativa amazonica peruana, evitando mezclar departamentos y climas. La
@@ -84,11 +85,15 @@ estos subcomandos: `data`, `data-demo`, `train` o `run`.
 ## Ingesta y formato
 
 `make data` descarga el periodo historico predeterminado de dos años. FIRMS usa
-`VIIRS_SNPP_SP`; el historico se descarga en solicitudes secuenciales de un
-maximo de cinco dias (aprox. 147 solicitudes para dos años), conservador respecto
-a los limites del endpoint. Open-Meteo se
-consulta en bloques de 30 dias. La ejecucion guarda respuestas originales en
-`data/raw/` y la tabla diaria unida en `data/processed/real_daily.csv`. Los
+`VIIRS_SNPP_SP`; el historico se descarga en bloques de hasta cinco dias, con
+hasta cuatro trabajadores y un limitador global de una solicitud por segundo
+(aprox. 147 solicitudes para dos años, muy por debajo del limite de 5.000
+transacciones por 10 minutos). Los bloques se guardan atomicamente y se
+reutilizan al reanudar. El tramo NRT reciente se consulta aparte y se combina
+quitando detecciones duplicadas. Open-Meteo consulta la malla en bloques de 30
+dias y hasta 50 celdas por peticion, con una pausa minima de cuatro segundos y
+reintentos. La ejecucion guarda respuestas originales en `data/raw/` y la tabla
+celda-dia unida en `data/processed/real_daily.csv`. Los
 errores de red, autenticacion o respuesta incompleta detienen la ingesta; no se
 crean etiquetas ni clima sinteticos para reemplazar fallos. Como alternativa,
 proporciona un CSV FIRMS real ya descargado:
@@ -101,15 +106,15 @@ El CSV debe contener `acq_date`, `latitude` y `longitude`. El periodo efectivo
 se configura en `.env`; la ingesta se detiene si es menor de un año. No
 etiquetes como ausencia de fuego un dia sin cobertura satelital adecuada.
 
-La clase 1 significa "al menos una deteccion activa FIRMS en ese dia y
-rectangulo"; clase 0 significa "ninguna deteccion devuelta". No es una verdad
-terrestre completa sobre igniciones/incendios, por limitaciones de paso
-satelital, nubes y resolucion.
+La etiqueta 1 significa que una celda tuvo al menos una deteccion FIRMS. La
+etiqueta 0 se conserva solo en dias con alguna deteccion en el departamento,
+para limitar los negativos a fechas con actividad observada; aun asi no implica
+que el satelite haya sobrevolado la celda ni confirma ausencia de fuego.
 
-El conjunto real se guarda en `data/processed/real_daily.csv`, ignorado por Git.
-Columnas: `date`, `fire_count`, `label`, `temperature_2m_max`,
-`relative_humidity_2m_mean`, `precipitation_sum`, `wind_speed_10m_max`,
-`latitude`, `longitude` y `data_source=firms_open_meteo`.
+El conjunto real de celda-dia se guarda en `data/processed/real_daily.csv`,
+ignorado por Git. Incluye `date`, `cell_id`, `fire_count`, `label`, variables
+climaticas con rezagos, medias moviles y acumulados de precipitacion,
+coordenadas, `data_source=firms_open_meteo` y la definicion del negativo.
 
 ## Modelo, metricas y ejecucion
 
@@ -171,10 +176,15 @@ notebooks/      Analisis opcional; la logica reutilizable vive en src/
 docs/fase_*.md  Alcance, comandos y resultados observados por fase
 ```
 
-## Resultados del entorno de desarrollo
+## Resultados de la ejecucion real
 
-Consulta [docs/fase_0.md](docs/fase_0.md), [docs/fase_1.md](docs/fase_1.md),
-[docs/fase_2.md](docs/fase_2.md), [docs/fase_3.md](docs/fase_3.md) y
-[docs/fase_4.md](docs/fase_4.md) para evidencia y limitaciones. Solo
-`reports/real_metrics.json` debe usarse para el informe, y solo despues de
-completar una ingesta real verificable.
+La ejecucion real produjo 37.584 ejemplos celda-dia (1.964 positivos) entre
+`2024-11-11` y `2026-10-10`; el holdout temporal de XGBoost obtuvo F1 `0.5506`,
+precision `0.4014`, recall `0.8763`, ROC-AUC `0.9335` y PR-AUC `0.5252`.
+FIRMS devolvio detecciones SP hasta `2026-06-30` y NRT desde `2026-08-21`;
+el periodo `2026-07-01`–`2026-08-20` queda sin detecciones observadas y no se
+relleno. Los resultados son retrospectivos y no un pronostico. El resumen
+detallado, la matriz de confusion y las figuras estan en
+[`docs/fase_1.md`](docs/fase_1.md), [`docs/fase_2.md`](docs/fase_2.md) y
+[`docs/fase_4.md`](docs/fase_4.md). Los datos, modelo y metricas JSON se guardan
+localmente; `data-demo` sigue aislado y no forma parte de estos resultados.

@@ -2,16 +2,18 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
 
 from .config import ROOT, get_settings
 from .demo import save_demo_dataset
+from .features import create_grid, engineer_grid_daily
 from .ingest import (
-    build_daily_dataset,
+    fetch_boundary_geojson,
     fetch_firms_history,
-    fetch_weather_history,
+    fetch_weather_grid_history,
     save_dataset,
 )
 from .model import predict_latest, train_model
@@ -26,40 +28,128 @@ def ingest_data(firms_csv: Path | None = None) -> Path:
     settings = get_settings()
     if (settings.end_date - settings.start_date).days < 364:
         raise ValueError("Final data ingestion requires at least one year of dates.")
-    fires = (
-        fetch_firms_history(
+    raw_dir = ROOT / "data" / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    source_coverage = {}
+    if firms_csv is None:
+        standard = fetch_firms_history(
             settings.firms_key,
             settings.firms_source,
             settings.area,
             settings.start_date,
             settings.end_date,
             settings.request_timeout,
+            raw_dir=raw_dir,
         )
-        if firms_csv is None
-        else pd.read_csv(firms_csv)
+        standard["firms_source"] = settings.firms_source
+        (raw_dir / f"firms_{settings.firms_source.lower()}.csv").write_text(
+            standard.drop(columns=["firms_source"]).to_csv(index=False),
+            encoding="utf-8",
+        )
+        source_frames = [standard]
+        source_coverage[settings.firms_source] = {
+            **_source_summary(standard),
+            "requested_start_date": settings.start_date.isoformat(),
+            "requested_end_date": settings.end_date.isoformat(),
+        }
+
+        utc_today = datetime.now(timezone.utc).date()
+        nrt_start = max(
+            settings.start_date,
+            settings.end_date - timedelta(days=59),
+            utc_today - timedelta(days=59),
+        )
+        if nrt_start <= settings.end_date:
+            nrt_source = "VIIRS_SNPP_NRT"
+            near_real_time = fetch_firms_history(
+                settings.firms_key,
+                nrt_source,
+                settings.area,
+                nrt_start,
+                settings.end_date,
+                settings.request_timeout,
+                raw_dir=raw_dir,
+            )
+            near_real_time["firms_source"] = nrt_source
+            (raw_dir / "firms_viirs_snpp_nrt.csv").write_text(
+                near_real_time.drop(columns=["firms_source"]).to_csv(index=False),
+                encoding="utf-8",
+            )
+            source_frames.append(near_real_time)
+            source_coverage[nrt_source] = {
+                **_source_summary(near_real_time),
+                "requested_start_date": nrt_start.isoformat(),
+                "requested_end_date": settings.end_date.isoformat(),
+            }
+        fires = pd.concat(source_frames, ignore_index=True)
+        identity_columns = [
+            column
+            for column in ("acq_date", "latitude", "longitude", "satellite", "instrument")
+            if column in fires.columns
+        ]
+        fires = fires.drop_duplicates(subset=identity_columns, keep="first").reset_index(drop=True)
+    else:
+        fires = pd.read_csv(firms_csv)
+        fires["firms_source"] = "local_firms_csv"
+        source_coverage["local_firms_csv"] = _source_summary(fires)
+
+    boundary_path = fetch_boundary_geojson(raw_dir / "madre_de_dios_boundary.geojson")
+    grid = create_grid(
+        settings.area,
+        settings.grid_cell_degrees,
+        boundary_path,
     )
-    raw_firms_path = ROOT / "data" / "raw" / "firms_detections.csv"
-    raw_firms_path.parent.mkdir(parents=True, exist_ok=True)
-    fires.to_csv(raw_firms_path, index=False)
-    weather = fetch_weather_history(
-        settings.latitude,
-        settings.longitude,
+    weather = fetch_weather_grid_history(
+        grid,
         settings.start_date,
         settings.end_date,
         settings.request_timeout,
+        cache_dir=raw_dir,
     )
     weather_path = ROOT / "data" / "raw" / "open_meteo_daily.csv"
     weather.to_csv(weather_path, index=False)
-    dataset = build_daily_dataset(
+    dataset, feature_stats = engineer_grid_daily(
         fires,
         weather,
-        settings.start_date,
-        settings.end_date,
-        settings.latitude,
-        settings.longitude,
+        grid,
+        settings.start_date.isoformat(),
+        settings.end_date.isoformat(),
+        boundary_path,
     )
     save_dataset(dataset, DATA_PATH)
+    (raw_dir / "firms_source_coverage.json").write_text(
+        json.dumps(source_coverage, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (ROOT / "reports" / "real_ingestion.json").write_text(
+        json.dumps(
+            {
+                "requested_start_date": settings.start_date.isoformat(),
+                "requested_end_date": settings.end_date.isoformat(),
+                "firms_sources": source_coverage,
+                "features": feature_stats,
+                "rows": int(len(dataset)),
+                "positive_grid_days": int(dataset["label"].sum()),
+                "negative_grid_days": int((dataset["label"] == 0).sum()),
+                "positive_rate": float(dataset["label"].mean()),
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     return DATA_PATH
+
+
+def _source_summary(frame: pd.DataFrame) -> dict:
+    if frame.empty:
+        return {"detections": 0, "first_detection": None, "last_detection": None}
+    dates = pd.to_datetime(frame["acq_date"], errors="coerce").dropna()
+    return {
+        "detections": int(len(frame)),
+        "first_detection": dates.min().date().isoformat() if not dates.empty else None,
+        "last_detection": dates.max().date().isoformat() if not dates.empty else None,
+    }
 
 
 def main() -> None:
@@ -72,6 +162,7 @@ def main() -> None:
     demo.add_argument("--seed", type=int, default=42)
     train = commands.add_parser("train", help="Train model and save holdout metrics")
     train.add_argument("--input", type=Path, default=DATA_PATH)
+    train.add_argument("--trials", type=int, default=10, help="Optuna trials per model")
     predict = commands.add_parser("run", help="Score the latest row in the dataset")
     predict.add_argument("--input", type=Path, default=DATA_PATH)
     predict.add_argument("--model", type=Path, default=MODEL_PATH)
@@ -99,7 +190,12 @@ def main() -> None:
         frame = save_demo_dataset(DEMO_DATA_PATH, days=args.days, seed=args.seed)
         print(f"Saved {len(frame)} synthetic rows ({int(frame['label'].sum())} positive): {DEMO_DATA_PATH}")
     elif args.command == "train":
-        print(json.dumps(train_model(args.input, MODEL_PATH, METRICS_PATH), indent=2))
+        print(
+            json.dumps(
+                train_model(args.input, MODEL_PATH, METRICS_PATH, n_trials=args.trials),
+                indent=2,
+            )
+        )
     elif args.command == "run":
         print(json.dumps(predict_latest(args.model, args.input), indent=2))
 

@@ -1,9 +1,12 @@
 import json
 
+import joblib
 import pandas as pd
 import pytest
+from sklearn.tree import DecisionTreeClassifier
 
 from src.wildfire.demo import make_demo_dataset, save_demo_dataset
+from src.wildfire.features import GRID_FEATURES
 from src.wildfire.model import load_training_data, predict_latest, train_model
 
 
@@ -46,6 +49,52 @@ def test_demo_data_cannot_be_used_for_final_training(tmp_path):
         train_model(path, tmp_path / "model.joblib", tmp_path / "metrics.json")
 
 
+def test_real_model_prediction_preserves_numeric_feature_dtypes(tmp_path):
+    estimator = DecisionTreeClassifier(random_state=42)
+    estimator.fit(
+        pd.DataFrame(
+            [
+                {feature: 1.0 for feature in GRID_FEATURES},
+                {feature: 2.0 for feature in GRID_FEATURES},
+            ]
+        ),
+        [0, 1],
+    )
+    frame = pd.DataFrame(
+        [
+            {
+                "date": "2025-01-01",
+                "label": 0,
+                "data_source": "firms_open_meteo",
+                "fire_count": 0,
+                "cell_id": "cell_a",
+                **{feature: 1.0 for feature in GRID_FEATURES},
+            },
+            {
+                "date": "2025-01-02",
+                "label": 1,
+                "data_source": "firms_open_meteo",
+                "fire_count": 1,
+                "cell_id": "cell_a",
+                **{feature: 2.0 for feature in GRID_FEATURES},
+            },
+        ]
+    )
+    data_path = tmp_path / "real.csv"
+    model_path = tmp_path / "real_model.joblib"
+    frame.to_csv(data_path, index=False)
+    joblib.dump(
+        {"model": estimator, "features": GRID_FEATURES, "threshold": 0.5},
+        model_path,
+    )
+
+    result = predict_latest(model_path, data_path)
+
+    assert result["date"] == "2025-01-02"
+    assert result["probability"] == 1.0
+    assert result["predicted_hotspot"] == 1
+
+
 def test_cli_defaults_to_real_paths_separate_from_demo():
     from src.wildfire.cli import DATA_PATH, DEMO_DATA_PATH, METRICS_PATH, MODEL_PATH
 
@@ -66,3 +115,20 @@ def test_training_requires_both_classes_in_chronological_split(tmp_path):
     frame.to_csv(path, index=False)
     with pytest.raises(ValueError, match="both classes"):
         train_model(path, tmp_path / "model.joblib", tmp_path / "metrics.json", allow_demo=True)
+
+
+def test_temporal_splits_keep_all_rows_of_each_date_together():
+    from src.wildfire.model import _temporal_splits
+
+    frame = pd.DataFrame(
+        {
+            "date": pd.to_datetime(
+                [date for day in range(10) for date in (f"2024-01-{day + 1:02d}",) * 2]
+            )
+        }
+    )
+    for train_indices, validation_indices in _temporal_splits(frame, n_splits=3):
+        train_dates = set(frame.iloc[train_indices]["date"])
+        validation_dates = set(frame.iloc[validation_indices]["date"])
+        assert train_dates.isdisjoint(validation_dates)
+        assert max(train_dates) < min(validation_dates)

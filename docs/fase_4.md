@@ -2,77 +2,71 @@
 
 ## Region y configuracion
 
-- Departamento elegido: Madre de Dios, Peru.
-- FIRMS bounding box (`oeste,sur,este,norte`):
-  `-72.4287387,-13.3413977,-68.6519906,-9.9069082`.
-- Punto Open-Meteo representativo: latitud `-12.0`, longitud `-70.25`.
-- El rectangulo procede del bounding box de la relacion administrativa de
-  OpenStreetMap [1891287](https://www.openstreetmap.org/relation/1891287).
-  Open-Meteo consulta el punto indicado; no un promedio del departamento.
-- Fuente historica: NASA FIRMS `VIIRS_SNPP_SP`.
-- Periodo predeterminado: 2024-10-10 a 2026-10-10 (731 fechas inclusivas;
-  dos años completos, con siete dias de margen para datos meteorologicos
-  recientes). Se puede configurar `START_DATE`/`END_DATE` en `.env`, pero el
-  pipeline final exige al menos un año.
+- Departamento amazonico: Madre de Dios, Peru.
+- Bounding box FIRMS (`oeste,sur,este,norte`):
+  `-72.4287387,-13.3413977,-68.6519906,-9.9069082`, derivado del bounding box
+  de la relacion administrativa
+  [OpenStreetMap 1891287](https://www.openstreetmap.org/relation/1891287).
+- Periodo solicitado: `2024-10-10` a `2026-10-10`, inclusivo.
+- Malla: 144 celdas de 0.25 grados que intersectan el poligono.
+- Se uso exclusivamente `VIIRS_SNPP_SP`, `VIIRS_SNPP_NRT` y Open-Meteo
+  Archive; ninguna salida de `data-demo` se uso en el entrenamiento final.
 
-Se escogio un solo departamento amazonico para mantener una unidad geografica
-definida sin mezclar jurisdicciones o climas. La caja es una aproximacion
-rectangular de la frontera administrativa, requisito de la consulta FIRMS, por
-lo que puede incluir una franja fuera de la frontera.
+Madre de Dios se escogio para acotar el problema a una unidad administrativa
+amazonica sin mezclar departamentos. FIRMS consulta un rectangulo; los puntos
+se filtraron posteriormente contra la geometria administrativa y se asignaron
+a una malla espacial.
 
-## Descargas y limites
+## Descargas reales y cobertura
 
-FIRMS se consulta secuencialmente en ventanas de hasta cinco dias con el
-endpoint historico
-`/api/area/csv/{MAP_KEY}/{SOURCE}/{BBOX}/{DAY_RANGE}/{DATE}`. Para 731 dias son
-147 solicitudes maximas. La pagina oficial de la [FIRMS Area API](https://firms.modaps.eosdis.nasa.gov/api/area/)
-describe la necesidad de `MAP_KEY` y su limite de transacciones. Open-Meteo se
-consulta en bloques de hasta 30 dias.
-Las respuestas originales se guardan en `data/raw/`, y la tabla diaria real en
-`data/processed/real_daily.csv`. No se rellenan fallos ni dias sin respuesta
-con datos sinteticos.
+FIRMS devolvio 11.845 detecciones SP (`2024-10-10` a `2026-06-30`) y 5.171
+detecciones NRT (`2026-08-21` a `2026-10-10`), 17.016 brutas en total. NRT se
+solicito para los 60 dias moviles disponibles, desde `2026-08-19`. Los
+rangos expresan las primeras y ultimas fechas con detecciones devueltas, no
+garantizan cobertura en cada fecha. Se observa una brecha entre el 1 de julio
+y el 20 de agosto de 2026. No se inventaron detecciones, negativos ni datos de
+reemplazo para ese intervalo.
 
-## Aislamiento de los datos sinteticos
+Open-Meteo devolvio 105.264 filas celda-dia para 144 celdas y 731 dias, sin
+nulos meteorologicos. Se recibio HTTP 429 en una ejecucion inicial de la API;
+se agregaron pausas conservadoras y cache por bloque, y la ejecucion reanudada
+completo los datos reales. No hubo error final de FIRMS.
 
-`data-demo` escribe unicamente en `data/demo/daily.csv`. El antiguo CSV, modelo
-y JSON sintéticos usados durante la configuracion se movieron a `data/demo/`,
-`models/demo/` y `reports/demo/`. Estan ignorados por Git. El entrenamiento CLI
-usa por defecto el CSV real, exige `data_source=firms_open_meteo` y rechaza
-`synthetic_demo`. El modelo/metricas finales son
-`models/wildfire_real.joblib` y `reports/real_metrics.json`.
+La integracion resulto en 37.584 ejemplos celda-dia para fechas activas entre
+`2024-11-11` y `2026-10-10`, con 1.964 positivos (5,23 %), 35.620 negativos y
+cero nulos en las features finales. Los negativos solo se forman en fechas
+con detecciones en alguna celda del departamento y son un proxy de actividad
+del satelite, no ausencia confirmada de fuego. 6.637 detecciones permanecen
+en las filas integradas tras el calentamiento de variables rezagadas.
 
-## Resultado de la ejecucion real en este entorno
+El detalle de filas, filtros y balance esta en
+[`real_ingestion.json`](../reports/real_ingestion.json); la cobertura por
+fuente esta en `data/raw/firms_source_coverage.json` (local, ignorado por Git).
+Los datos raw y el dataset procesado tambien se mantienen locales e ignorados.
+`MAP_KEY` se lee desde `.env`; su valor no se escribe en codigo, reportes ni
+Git.
 
-Open-Meteo si respondio con 731 filas diarias reales, desde 2024-10-10 hasta
-2026-10-10, sin valores faltantes. La respuesta se conserva en
-`data/raw/open_meteo_daily.csv`, ignorada por Git. No se integro en un dataset
-final porque falta FIRMS. No se pudieron iniciar solicitudes HTTP FIRMS ni
-entrenar con datos reales: al comprobar el workspace no existia
-`E:\aprendizaje de maquina\.env`, y el proceso tampoco tenia una variable
-`MAP_KEY`. El comando de ingesta se detuvo antes de hacer una solicitud FIRMS
-con el mensaje `MAP_KEY is missing`; por tanto:
+## Modelo real
 
-- observaciones meteorologicas reales descargadas: **731 filas**;
-- detecciones FIRMS reales descargadas: **ninguna** (API no llamada);
-- filas integradas reales para entrenamiento: **ninguna**;
-- periodo configurado: **2024-10-10 a 2026-10-10**;
-- balance de clases real: **no disponible sin detecciones FIRMS**;
-- metricas de entrenamiento real: **no generadas**.
+Optuna ajusto cuatro clasificadores durante 10 trials por modelo con tres
+folds temporales. La particion de prueba contiene 7.632 filas entre
+`2026-06-06` y `2026-10-10`, separada por fechas. XGBoost se selecciono usando
+predicciones out-of-fold de entrenamiento, con umbral `0.71171`. En el holdout
+obtuvo F1 `0.5506`, precision `0.4014`, recall `0.8763`, ROC-AUC `0.9335` y
+PR-AUC `0.5252`; confusion matrix `[[6121, 856], [81, 574]]`.
+HistGradientBoosting obtuvo mayores metricas observadas en el holdout, pero no
+se uso ese conjunto para elegir el modelo. Esta tarea es una clasificacion
+retrospectiva, no un pronostico operacional.
 
-No se reportan metricas sinteticas como resultados del informe. Para reanudar,
-verifica que tu clave este en `E:\aprendizaje de maquina\.env` (no en
-`.env.example`, y sin compartirla en el chat) y ejecuta
-`.\scripts\run.ps1 data`, `.\scripts\run.ps1 train` y
-`.\scripts\run.ps1 test`. Si FIRMS responde con un error, la ingesta falla sin
-crear dataset real y su mensaje queda en la terminal.
+Las tablas completas estan en [`fase_2.md`](fase_2.md) y las figuras en
+`reports/figures/`. El modelo `models/wildfire_real.joblib` y
+`reports/real_metrics.json` se generan localmente y se excluyen de Git.
 
-## Validacion del codigo
+## Validacion ejecutada
 
-- `.\.venv\Scripts\python.exe -m pytest -q` -> 15 pruebas aprobadas.
+- `.\scripts\run.ps1 data` -> ingesta real integrada, exit code 0.
+- `.\.venv\Scripts\python.exe -m src.wildfire.cli train --trials 10` ->
+  cuatro modelos entrenados y comparados, exit code 0.
+- `.\.venv\Scripts\python.exe -m pytest -q` -> 19 pruebas aprobadas.
 - `.\.venv\Scripts\python.exe -m pip check` -> sin dependencias rotas.
-- `docker build -t wildfire-firms .` -> imagen construida correctamente.
-- `docker run --rm wildfire-firms data-demo --days 30` -> la salida quedo en
-  `data/demo/` dentro del contenedor, aislada del dataset real.
-- `python -m src.wildfire.cli train --input data/demo/daily.csv` -> fallo
-  intencional con `Synthetic demo data cannot be used for final training or
-  report metrics.`
+- `git check-ignore -v .env` -> `.env` ignorado por Git.
