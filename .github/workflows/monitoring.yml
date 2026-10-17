@@ -5,6 +5,12 @@ on:
     workflows: ["Refresh real FIRMS data"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      data_run_id:
+        description: Successful data-update workflow run containing the real-data artifact
+        required: true
+        type: string
 
 permissions:
   actions: read
@@ -12,7 +18,11 @@ permissions:
 
 jobs:
   monitor:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: >-
+      ${{
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+        || github.event_name == 'workflow_dispatch'
+      }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +38,7 @@ jobs:
           name: real-data-update
           path: fresh-data
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ github.event_name == 'workflow_dispatch' && inputs.data_run_id || github.event.workflow_run.id }}
       - name: Install refreshed real dataset
         run: cp fresh-data/data/processed/real_daily.csv data/processed/real_daily.csv
       - name: Calculate rolling feature and label drift

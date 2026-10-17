@@ -1,58 +1,50 @@
 # Fase 5: automatizacion y monitoreo
 
-## Workflows implementados
+## Workflows
 
-- `.github/workflows/ci.yml`: Ruff, pytest con informe de cobertura, validacion
-  de Compose y build Docker.
-- `.github/workflows/cd.yml`: despliega una lista permitida al Hugging Face
-  Space configurado en `HF_SPACE` y prueba `/health`. Si faltan ajustes, emite
-  una anotacion visible y no intenta publicar.
-- `.github/workflows/data_update.yml`: ejecucion semanal o manual; exige el
-  secret `MAP_KEY`, descarga solo datos reales, y entrega dataset procesado e
-  informes como artifact temporal de Actions (sin archivos de `data/raw/`).
-- `.github/workflows/retrain.yml`: se activa tras una descarga exitosa, usa el
-  dataset procesado del artifact, compara F1 de validacion temporal OOF y solo
-  hace commit/push de dataset y artefactos si el candidato mejora estrictamente.
-- `.github/workflows/monitoring.yml`: tras la descarga valida, compara 30 dias
-  recientes contra 90 de referencia; guarda PSI por feature y cambio de tasa
-  positiva como artifact. PSI >= 0,20 es una senal de revision, no un diagnostico.
+- `.github/workflows/ci.yml`: Ruff, pytest con cobertura, validacion Compose y
+  build Docker.
+- `.github/workflows/cd.yml`: Render hace auto-deploy al recibir pushes a
+  `main`; Actions espera el servicio en `APP_URL` y ejecuta smoke tests sobre
+  `/health`, `/model-info` y `/predict`. Tiene timeouts/reintentos para el
+  cold start del plan Free y puede ejecutarse manualmente.
+- `.github/workflows/data_update.yml`: semanal o manual, exige `MAP_KEY`,
+  descarga e integra exclusivamente datos reales y publica dataset procesado
+  mas informes como artifact temporal (nunca los CSV crudos).
+- `.github/workflows/retrain.yml`: automatico tras data update o manual con
+  `data_run_id`; descarga el artifact, entrena con Optuna y solo promociona si
+  mejora estrictamente el F1 temporal OOF.
+- `.github/workflows/monitoring.yml`: automatico tras data update o manual con
+  `data_run_id`; contrasta ventana reciente de 30 dias con 90 dias de
+  referencia, genera PSI y cambio de la tasa positiva. PSI >= 0,20 indica una
+  senal de revision, no diagnostico definitivo.
 
-`src/wildfire/monitor.py` se niega a procesar origen sintetico o combinado,
-requiere fechas y features finitas y falla si las ventanas son insuficientes.
-Los eventos de prediccion del servicio registran celda, fecha, score y umbral,
-sin registrar credenciales ni features detalladas.
+`src/wildfire/monitor.py` rechaza datasets sinteticos/mixtos, fechas invalidas,
+features nulas y ventanas insuficientes. Los logs de inferencia no contienen
+credenciales ni el vector completo de features.
 
-## Requisitos de secretos
+## Configuracion de Actions
 
-La cuenta de Hugging Face y las variables/secrets del repositorio no estaban
-configurados en el entorno al implementar esta fase. Se requieren:
+- Variable `APP_URL`: URL publica del servicio Render
+  (`https://wildfire-risk-mlops.onrender.com`). Solo se usa para el smoke test
+  CD; Render es quien construye y despliega desde `main`.
+- Secret `MAP_KEY`: credencial NASA FIRMS; necesario para data update y por
+  tanto para las acciones posteriores de reentrenamiento y monitoreo.
 
-- GitHub Actions secret `MAP_KEY` para actualizar los datos.
-- GitHub Actions secret `HF_TOKEN` y variable `HF_SPACE` para desplegar.
+No se requieren `HF_TOKEN` ni `HF_SPACE`; el despliegue remoto ya no depende de
+Hugging Face. Los secretos deben existir unicamente en GitHub Settings >
+Secrets and variables > Actions.
 
-Los valores solo se configuran en Settings > Secrets and variables > Actions;
-no se solicitan ni se guardan en el repo. El workflow CD deja una anotacion
-explicita cuando no se configura el destino. La descarga/reentrenamiento
-requieren el secret FIRMS y no se reportan aqui como ejecuciones completadas.
+## Validacion previa y ejecuciones actuales
 
-## Ejecucion observada en GitHub Actions
+CI **39072309838** y **39072336776** finalizaron `success`, incluyendo tests
+con cobertura, Ruff, Compose y Docker build. El CD anterior **39072309839**
+omitio el despliegue Hugging Face por falta de `HF_SPACE`/`HF_TOKEN`; fue
+reemplazado por el smoke test Render descrito arriba.
 
-GitHub Actions registra los cinco workflows como activos. Tras publicar los
-cambios, la corrida CD **39072309839** termino `success`; su job
-`deployment-configuration` paso y `deploy` quedo `skipped`, por lo que no hubo
-despliegue remoto. El log publico indica que faltan `HF_SPACE` y `HF_TOKEN`.
-
-Las corridas CI **39072309838** (run 1, commit `2cb1f44`) y **39072336776**
-(run 2, commit `4dc1903`) terminaron `success`: en ambas completaron
-instalacion, Ruff, pytest con cobertura, validacion Compose y build Docker.
-No se encontraron corridas de `data_update.yml`, `retrain.yml` ni
-`monitoring.yml`: las dos ultimas dependen de una descarga exitosa y el refresh
-requiere el secret `MAP_KEY`.
-
-Enlaces de las corridas consultadas:
-
-- [CD 39072309839](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39072309839)
-- [CI 39072309838](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39072309838)
-- [CI 39072336776](https://github.com/lozatorrescristianalexis-debug/wildfire-risk-mlops/actions/runs/39072336776)
-
-La verificacion local de CI y pruebas se documenta en `docs/fase_6.md`.
+El smoke test publico directo ya fue ejecutado: GET `/health`, GET
+`/model-info` y POST `/predict` respondieron HTTP 200 usando la app real de
+Render. Respuestas en `reports/render_public_smoke.json` y `docs/fase_4.md`.
+Los run IDs y resultados de los nuevos workflow dispatch de CD, data update,
+retrain y monitoring se agregaran una vez consultados en GitHub Actions; no se
+declaran exitosos antes de ver su conclusion.
