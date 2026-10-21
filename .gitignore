@@ -31,3 +31,11 @@ reports/metrics.json
 reports/real_metrics.json
 !reports/real_metrics.json
 reports/demo/*
+
+# Last-good observation backups and machine-local refresh state.
+web/fire_observations.json.gz.previous
+web/fire_observations.json.gz.status.json
+observation-data/
+
+# Reproducible training candidates and preserved production baselines.
+data/experiments/

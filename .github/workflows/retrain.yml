@@ -80,13 +80,6 @@ jobs:
           git add models/wildfire_real.joblib reports/real_metrics.json reports/real_ingestion.json reports/firms_gap_alternative_sources.json reports/figures web/real_examples.json web/region_weather.json
           git commit -m "chore: promote improved real wildfire model" -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
           git push origin main
-      - name: Keep current model when validation does not improve
+      - name: Keep current model and its matching weather profiles
         if: ${{ steps.compare.outputs.promote != 'true' }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add web/region_weather.json
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: refresh regional historical weather profiles"
-            git push origin main
-          fi
+        run: echo "Candidate not promoted; retain the deployed model and its weather sampling policy together."

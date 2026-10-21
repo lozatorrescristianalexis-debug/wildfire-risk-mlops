@@ -1,0 +1,23 @@
+# Optional independent updater. The existing API/model remains unchanged.
+# docker compose -f docker-compose.yml -f docker-compose.observations.yml up --build -d
+services:
+  api:
+    environment:
+      WILDFIRE_OBSERVATIONS_PATH: /app/observation-data/fire_observations.json.gz
+    volumes:
+      - observations:/app/observation-data:ro
+  observations-updater:
+    build:
+      context: .
+    image: wildfire-risk-mlops:latest
+    command: ["python", "-m", "src.wildfire.observations", "watch", "--days", "14", "--interval-seconds", "3600"]
+    environment:
+      MAP_KEY: ${MAP_KEY:-}
+      WILDFIRE_OBSERVATIONS_PATH: /app/observation-data/fire_observations.json.gz
+    volumes:
+      - observations:/app/observation-data
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+volumes:
+  observations:

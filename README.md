@@ -7,8 +7,10 @@ de notebooks.
 
 > **Importante:** el objetivo implementado es clasificar si FIRMS registro un
 > hotspot en una celda durante un dia, usando solo meteorologia de dias previos.
-> Es retrospectivo, no un nowcast, pronostico futuro, alerta operativa ni
-> estimacion causal del riesgo de incendio. El modelo nacional usa una malla
+> El modelo se validó retrospectivamente. La pantalla inicial puede usar el
+> clima estimado de hoy para una inferencia experimental de mañana, pero esa
+> salida no tiene validación prospectiva y no es una alerta operativa ni una
+> estimación causal del riesgo de incendio. El modelo nacional usa una malla
 > de 0,5° para las detecciones y una serie meteorológica representativa por cada
 > una de las 25 regiones; el clima local dentro de una región no queda resuelto.
 > Los negativos se conservan solo en fechas con detecciones en alguna parte del Perú: son un proxy de
@@ -94,13 +96,30 @@ Abre `http://localhost:8000/` para la interfaz en español y
   meteorológicas completas por muestra o compartidas; rechaza entradas inválidas.
 - `GET /api/region-weather`: perfiles históricos observados, secos y húmedos
   para las 25 regiones usados por el mapa.
-- `GET /api/historical-fires`: sirve la muestra local `web/historical_fires.json`.
+- `GET /api/live-weather`: clima reciente de Open-Meteo para los 25 puntos
+  regionales, con una solicitud agrupada y caché de 15 minutos. Devuelve
+  condiciones actuales, resumen diario de hoy y tres perfiles para mañana.
+- `GET /api/fire-observations`: detecciones originales del archivo consolidado,
+  con filtros por fechas, región, confianza, instrumento y extensión, y paginación
+  verificable. Es la fuente del mapa de Observaciones.
+- `GET /api/fire-observations/status`: fechas disponibles, fuentes, calidad y
+  resultado del último intento de actualización.
+- `GET /api/historical-fires`: muestra antigua de 250 puntos, conservada por
+  compatibilidad; ya no alimenta el mapa de Observaciones.
 
-Predicciones son retrospectivas, no alertas o pronósticos. La tabla web muestra
-la probabilidad, el umbral y la celda evaluada. La fecha identifica la
-observación, pero no es una variable del modelo. El panorama abre con clima
-histórico del mismo día en 25 puntos regionales. Los perfiles secos y húmedos
-usan fechas históricas que pueden diferir entre regiones. La superficie entre muestras se
+La tabla web muestra la probabilidad, el umbral y la celda evaluada. La fecha
+identifica el caso, pero no es una variable del modelo. El panorama ofrece
+cuatro modos: clima de hoy, día lluvioso simulado, día caluroso simulado y
+fecha histórica de referencia. Los tres primeros usan las condiciones de hoy
+y 29 días anteriores para evaluar **mañana**, porque el modelo fue entrenado
+con variables meteorológicas anteriores al día objetivo. El día de hoy incluye
+un pronóstico diario de Open-Meteo para las horas que aún no transcurren; sus
+condiciones actuales también provienen de modelos meteorológicos. El escenario
+lluvioso fija al menos 20 mm de lluvia y 85 % de humedad y reduce 2 °C la
+temperatura máxima de hoy; el caluroso sube 4 °C, reduce 15 puntos de humedad
+y elimina la lluvia de hoy. Son comparaciones hipotéticas, no pronósticos de
+incendios. Si Open-Meteo falla, la vista histórica permanece disponible.
+La superficie entre muestras se
 interpola solo para visualizarla y se recorta al límite regional. Los indicadores
 cuentan únicamente centros de muestreo dentro de la región; «sobre el umbral»
 usa el corte calibrado del modelo. La malla visual nacional usa muestras a
@@ -110,11 +129,18 @@ exacto para esa coordenada, sin tomar el color interpolado como predicción.
 El modelo desplegado fue entrenado con datos del Perú completo y se evaluó con
 un holdout temporal nacional. El panel informa métricas regionales cuando hay
 ejemplos de ambas clases; las regiones sin muestra suficiente no reciben una
-métrica local. El mapa de observaciones usa una muestra incluida en el
-repositorio, no una consulta
-en vivo ni el archivo completo de FIRMS. Su etiqueta regional se contrasta
-con las coordenadas: los puntos se filtran por el polígono en que caen y los
-que están fuera de Perú quedan excluidos del mapa nacional.
+métrica local. El mapa de observaciones usa el archivo consolidado
+`web/fire_observations.json.gz`, con coordenadas y horas de adquisición originales.
+La región se calcula por coordenadas; los puntos fuera de Perú se excluyen del
+mapa nacional y pueden consultarse con `region=all`. El archivo disponible no
+garantiza cobertura completa de todos los sensores y períodos de FIRMS.
+
+Para actualizarlo, ejecuta `python -m src.wildfire.observations refresh --days 14`.
+Un servicio independiente opcional (`observations watch`) combina cuatro
+productos FIRMS, usa CSV oficiales como respaldo y conserva la última descarga
+válida. El modelo y el servidor web no necesitan cambiar. Consulta
+[diagnóstico, comandos y alternativas de recuperación](docs/mapa_datos.md),
+incluido el archivo Docker Compose opcional para actualización automática.
 
 Los límites provienen de [geoBoundaries gbOpen Perú ADM1](https://www.geoboundaries.org/api/current/gbOpen/PER/ADM1/)
 (William & Mary geoLab; fuente original: Wikimedia Commons). El archivo local
@@ -127,6 +153,10 @@ consultas externas en cada visita. Para actualizarlo, ejecuta
 La interfaz usa HTML, CSS, JavaScript y Leaflet sin fase de compilación.
 FastAPI sirve los archivos desde `web/` y el Dockerfile los copia en la
 imagen, de modo que Render puede seguir construyendo el mismo servicio Docker.
+La API pública de Open-Meteo no requiere clave para prototipos no comerciales;
+su [licencia gratuita excluye uso comercial](https://open-meteo.com/en/pricing).
+Una aplicación comercial debe usar su plan correspondiente o alojar un
+proveedor meteorológico propio.
 
 En Windows, si no tienes GNU Make, los mismos atajos estan disponibles en
 PowerShell:
@@ -293,3 +323,25 @@ detallado, la matriz de confusion y las figuras estan en
 dataset y los datos crudos se mantienen locales e ignorados; el modelo final y
 sus metricas se versionan para que el contenedor sea reproducible. `data-demo`
 sigue aislado y no forma parte de estos resultados.
+
+## Auditoría regional de Puno
+
+El mapa actualizado y el dataset de entrenamiento tienen ciclos distintos.
+`/model-info` informa filas de ajuste, filas de prueba y sus períodos; descargar
+observaciones no reentrena. Se implementó una comparación reproducible entre
+umbral regional y modelos especializados, guardando el candidato separado del
+modelo servido. Consulta [datos usados, resultados y limitaciones en Puno](docs/puno_modelo.md)
+o ejecuta `python -m src.wildfire.regional_experiment`.
+
+
+### Corrección prioritaria de entrenamiento en Puno
+
+El flujo `data --region peru` mantiene un satélite a lo largo del período (SP y
+NRT según disponibilidad) y descarga clima por centro de celda para Puno.
+`python -m src.wildfire.priority_experiment --trials 5` construye y evalúa un
+candidato aislado, con el mismo corte temporal de la versión anterior.
+La ejecución del 21/10/2026 mejoró PR-AUC, pero no F1 en Puno; el candidato quedó
+sin activar y la API conserva el modelo anterior. El detalle reproducible está
+en [docs/puno_modelo.md](docs/puno_modelo.md) y
+[reports/priority_improvement.json](reports/priority_improvement.json).
+Las métricas regionales se consultan ahora en un desplegable del panel del modelo.

@@ -1,0 +1,104 @@
+{
+  "comparison_basis": "Same cell-days and corrected single-satellite labels; each model receives its own training weather policy.",
+  "interpretation": "Exploratory regression check on an already-inspected holdout, not independent validation.",
+  "test_date_start": "2026-05-22",
+  "matched_rows": 66679,
+  "labels_changed_on_matched_rows": 2438,
+  "baseline_sha256": "0aba078820b537fe349d4b3ea0e0df3f8565d051ff983e2330ca33b37e54c95e",
+  "candidate_sha256": "7ac945590dfcfbf7a8eb8f7b554c68a6234573ae38c50a61ed43fe9d5a2947a3",
+  "regions": {
+    "peru": {
+      "rows": 66679,
+      "positive_rows": 9408,
+      "baseline": {
+        "f1": 0.459484516966438,
+        "precision": 0.35285071481460384,
+        "recall": 0.6584821428571429,
+        "roc_auc": 0.8253700609493331,
+        "pr_auc": 0.4181410747802842,
+        "brier_score": 0.10159298534205323,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            45909,
+            11362
+          ],
+          [
+            3213,
+            6195
+          ]
+        ]
+      },
+      "candidate": {
+        "f1": 0.4663787785317705,
+        "precision": 0.3540690947159623,
+        "recall": 0.6830357142857143,
+        "roc_auc": 0.8312163823073186,
+        "pr_auc": 0.43376157421242806,
+        "brier_score": 0.10015882288105722,
+        "threshold": 0.18943004245721973,
+        "confusion_matrix": [
+          [
+            45548,
+            11723
+          ],
+          [
+            2982,
+            6426
+          ]
+        ]
+      }
+    },
+    "puno": {
+      "rows": 3668,
+      "positive_rows": 408,
+      "baseline": {
+        "f1": 0.03233256351039261,
+        "precision": 0.28,
+        "recall": 0.01715686274509804,
+        "roc_auc": 0.654977896066402,
+        "pr_auc": 0.1694927534261731,
+        "brier_score": 0.09835182252866095,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            3242,
+            18
+          ],
+          [
+            401,
+            7
+          ]
+        ]
+      },
+      "candidate": {
+        "f1": 0.02733485193621868,
+        "precision": 0.1935483870967742,
+        "recall": 0.014705882352941176,
+        "roc_auc": 0.7143081619150727,
+        "pr_auc": 0.2059867980936745,
+        "brier_score": 0.0967407690856072,
+        "threshold": 0.18943004245721973,
+        "confusion_matrix": [
+          [
+            3235,
+            25
+          ],
+          [
+            402,
+            6
+          ]
+        ]
+      }
+    }
+  },
+  "candidate_model": "hist_gradient_boosting",
+  "dataset_rows": 347647,
+  "train_rows": 279950,
+  "test_rows": 67697,
+  "activation_gate": {
+    "rule": "National and Puno average precision and F1 must not decrease on matched corrected labels.",
+    "passed": false
+  },
+  "activated": false
+}

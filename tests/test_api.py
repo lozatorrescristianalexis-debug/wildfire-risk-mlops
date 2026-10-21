@@ -28,6 +28,10 @@ def test_health_and_model_info_use_real_model_artifacts():
     if info.json()["regional_test_metrics"]["callao"]["grid_cells"] == 0:
         assert info.json()["regional_test_metrics"]["callao"]["metrics"] is None
     assert info.json()["features"] == list(FEATURES)
+    usage = info.json()["training_data"]
+    assert usage["fit_rows"] + usage["test_rows"] == usage["dataset_rows"]
+    assert usage["fit_before"] == usage["test_date_start"]
+    assert usage["observations_refresh_retrains_model"] is False
 
 
 def test_prediction_returns_probability_threshold_and_cell():
@@ -107,7 +111,8 @@ def test_frontend_and_its_assets_are_served():
     assert response.status_code == 200
     assert '<html lang="es">' in response.text
     assert "Vigía Fuego" in response.text
-    assert "No es un pronóstico" in response.text
+    assert "Simular día lluvioso" in response.text
+    assert "Hoy · estimar mañana" in response.text
     assert client.get("/app.css").status_code == 200
     assert client.get("/app.js").status_code == 200
 
@@ -146,7 +151,7 @@ def test_regional_weather_grid_uses_cell_specific_historical_conditions():
     data = profile_response.json()
     regions = {region["id"]: region for region in client.get("/api/regions").json()[1:]}
     observed = data["profiles"]["observed"]
-    assert set(observed) == set(regions)
+    assert set(observed) == set(regions) | {item["id"] for item in data.get("local_locations", [])}
     assert all(item["date"] == data["observed_date"] for item in observed.values())
     assert len({tuple(item["features"].values()) for item in observed.values()}) > 1
 
@@ -230,4 +235,5 @@ def test_swagger_openapi_exposes_requested_routes():
         "/model-info",
         "/examples/real",
         "/predict",
+        "/api/live-weather",
     }

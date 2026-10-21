@@ -5,17 +5,20 @@ import logging
 import math
 from datetime import date
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
 import joblib
 import pandas as pd
-from fastapi import FastAPI
+import requests
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .config import ROOT
 from .features import GRID_FEATURES
 from .geography import REGIONS_PATH, region_at, region_catalog, region_data
+from .live_weather import load_live_weather
+from .observations import load_snapshot
 
 MODEL_PATH = ROOT / "models" / "wildfire_real.joblib"
 METRICS_PATH = ROOT / "reports" / "real_metrics.json"
@@ -122,8 +125,8 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Wildfire Hotspot Classifier",
         description=(
-            "Retrospective FIRMS cell-day classification from lagged weather. "
-            "This API is not a fire forecast or operational alert."
+            "FIRMS cell-day classification from lagged weather. Recent-weather inputs "
+            "support experimental next-day estimates, not an operational fire alert."
         ),
         version="1.0.0",
     )
@@ -153,6 +156,16 @@ def create_app() -> FastAPI:
             "calibration": metadata.get("calibration"),
             "regional_test_metrics": metadata.get("regional_test_metrics"),
             "regional_assignment": metadata.get("regional_assignment"),
+            "training_data": {
+                "dataset_rows": metadata.get("rows"),
+                "fit_rows": metadata.get("train_rows"),
+                "test_rows": metadata.get("test_rows"),
+                "fit_before": metadata.get("test_date_start"),
+                "test_date_start": metadata.get("test_date_start"),
+                "test_date_end": metadata.get("test_date_end"),
+                "dataset_sha256": metadata.get("dataset_sha256"),
+                "observations_refresh_retrains_model": False,
+            },
         }
 
     @app.get("/examples/real")
@@ -212,6 +225,17 @@ def create_app() -> FastAPI:
     def regional_weather_profiles():
         return FileResponse(REGION_WEATHER_PATH, media_type="application/json")
 
+    @app.get("/api/live-weather")
+    def live_regional_weather():
+        try:
+            return load_live_weather()
+        except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+            logger.warning("live_weather_unavailable reason=%s", exc)
+            raise HTTPException(
+                status_code=503,
+                detail="No se pudo obtener el clima reciente. El análisis histórico sigue disponible.",
+            ) from exc
+
     @app.get("/api/historical-fires", include_in_schema=False)
     def historical_fires(region: str | None = None, min_confidence: str | None = None):
         data = _historical_points()
@@ -227,6 +251,66 @@ def create_app() -> FastAPI:
             elif level == "nominal":
                 data = [item for item in data if item.get("confidence") in ("high", "nominal")]
         return data
+
+    @app.get("/api/fire-observations/status", include_in_schema=False)
+    def observation_status():
+        try:
+            snapshot = load_snapshot()
+        except FileNotFoundError as exc:
+            raise HTTPException(503, str(exc)) from None
+        return {**snapshot["metadata"], "snapshot_id": snapshot["snapshot_id"]}
+
+    @app.get("/api/fire-observations", include_in_schema=False)
+    def fire_observations(
+        region: str = "peru",
+        start_date: date | None = None,
+        end_date: date | None = None,
+        confidence: Literal["all", "nominal", "high", "low", "unknown"] = "all",
+        instrument: Literal["all", "VIIRS", "MODIS"] = "all",
+        bbox: str | None = None,
+        limit: Annotated[int, Query(ge=1, le=5000)] = 2000,
+        offset: Annotated[int, Query(ge=0)] = 0,
+        snapshot_id: str | None = None,
+    ):
+        """Stable pagination over exact observations, independent of model cells."""
+        selected = region.strip().lower()
+        if selected not in {"all", "peru", *region_data()[1]}:
+            raise HTTPException(422, "Unknown region")
+        if start_date and end_date and start_date > end_date:
+            raise HTTPException(422, "start_date must not exceed end_date")
+        bounds = None
+        if bbox:
+            try:
+                bounds = [float(value) for value in bbox.split(",")]
+                west, south, east, north = bounds
+                if not (all(math.isfinite(v) for v in bounds)
+                        and -180 <= west <= east <= 180 and -90 <= south <= north <= 90):
+                    raise ValueError
+            except ValueError:
+                raise HTTPException(422, "bbox must be west,south,east,north in WGS84") from None
+        try:
+            snapshot = load_snapshot()
+        except FileNotFoundError as exc:
+            raise HTTPException(503, str(exc)) from None
+        if snapshot_id and snapshot_id != snapshot["snapshot_id"]:
+            raise HTTPException(409, "Snapshot changed; restart pagination")
+        first = start_date.isoformat() if start_date else None
+        last = end_date.isoformat() if end_date else None
+        data = [row for row in snapshot["items"] if (
+            (selected == "all" or (selected == "peru" and row["mapped_region"] is not None)
+             or row["mapped_region"] == selected)
+            and (first is None or row["acq_date"] >= first)
+            and (last is None or row["acq_date"] <= last)
+            and (confidence == "all" or row["confidence"] == confidence
+                 or (confidence == "nominal" and row["confidence"] == "high"))
+            and (instrument == "all" or row["instrument"] == instrument)
+            and (bounds is None or (bounds[0] <= row["longitude"] <= bounds[2]
+                                    and bounds[1] <= row["latitude"] <= bounds[3]))
+        )]
+        total = len(data)
+        return {"items": data[offset:offset + limit], "total": total, "offset": offset,
+                "limit": limit, "next_offset": offset + limit if offset + limit < total else None,
+                "snapshot_id": snapshot["snapshot_id"], "metadata": snapshot["metadata"]}
 
     @app.post("/api/predict-grid", include_in_schema=False)
     def predict_grid(payload: GridRequest):

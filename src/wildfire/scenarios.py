@@ -9,16 +9,19 @@ from .geography import region_catalog
 
 
 def build_region_weather_profiles(weather: pd.DataFrame) -> dict:
+    required = {region["id"] for region in region_catalog()[1:]}
+    if not required.issubset(set(weather["cell_id"])):
+        raise ValueError("Regional weather must include all 25 regional points.")
     history = add_lagged_weather(weather).dropna(subset=LAG_FEATURES)
     if history.empty:
         raise ValueError("Regional weather has no complete lagged observations.")
     profiles = {key: {} for key in ("observed", "dry", "wet")}
     latest_date = str(history["date"].max())
 
-    for region in region_catalog()[1:]:
-        rows = history.loc[history["cell_id"].eq(region["id"])].copy()
+    for region_id in weather["cell_id"].unique():
+        rows = history.loc[history["cell_id"].eq(region_id)].copy()
         if rows.empty or latest_date not in set(rows["date"].astype(str)):
-            raise ValueError(f"Regional weather is incomplete for {region['id']}.")
+            raise ValueError(f"Regional weather is incomplete for {region_id}.")
         temperature_rank = rows["temperature_2m_max_lag1"].rank(pct=True)
         humidity_rank = rows["relative_humidity_2m_mean_lag1"].rank(pct=True)
         rainfall_rank = rows["precipitation_sum_sum_30d"].rank(pct=True)
@@ -30,7 +33,7 @@ def build_region_weather_profiles(weather: pd.DataFrame) -> dict:
             "wet": ordered.iloc[round((len(ordered) - 1) * 0.10)],
         }
         for key, row in choices.items():
-            profiles[key][region["id"]] = {
+            profiles[key][region_id] = {
                 "date": str(row["date"]),
                 "features": {name: round(float(row[name]), 4) for name in LAG_FEATURES},
             }
@@ -38,7 +41,7 @@ def build_region_weather_profiles(weather: pd.DataFrame) -> dict:
     return {
         "observed_date": latest_date,
         "description": (
-            "Historical Open-Meteo weather at 25 regional representative points. "
+            "Historical Open-Meteo UTC weather at regional points and available local cell centers. "
             "Dry and wet profiles use observed dates near each region's 90th and 10th "
             "dryness percentile; regions may use different dates. These are not forecasts."
         ),

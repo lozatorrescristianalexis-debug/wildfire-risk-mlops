@@ -22,3 +22,13 @@ run:
 
 test:
 	$(PYTHON) -m pytest
+
+.PHONY: observations observations-refresh observations-watch
+observations:
+	$(PYTHON) -m src.wildfire.observations build-local
+
+observations-refresh:
+	$(PYTHON) -m src.wildfire.observations refresh --days 14
+
+observations-watch:
+	$(PYTHON) -m src.wildfire.observations watch --days 14

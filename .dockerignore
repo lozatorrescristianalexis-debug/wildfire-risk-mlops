@@ -15,3 +15,9 @@ reports/metrics.json
 reports/demo
 tests
 notebooks
+.superdesign
+web/fire_observations.json.gz.previous
+web/fire_observations.json.gz.status.json
+observation-data
+
+data/experiments

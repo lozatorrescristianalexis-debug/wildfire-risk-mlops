@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
+import requests
 from shapely import covers, points
-from shapely.geometry import box, mapping, shape
+from shapely.geometry import mapping, shape
 
 from .config import ROOT, get_settings
 from .demo import save_demo_dataset
 from .features import create_grid, engineer_grid_daily
-from .geography import region_catalog, region_data
+from .geography import region_data
 from .ingest import (
     fetch_boundary_geojson,
     fetch_firms_history,
@@ -21,116 +21,51 @@ from .ingest import (
 )
 from .model import predict_latest, train_model
 from .scenarios import build_region_weather_profiles
+from .observations import fetch_availability
+from .training_sources import sensor_windows
+from .weather_sampling import national_weather_locations
 
 DATA_PATH = ROOT / "data" / "processed" / "real_daily.csv"
 DEMO_DATA_PATH = ROOT / "data" / "demo" / "daily.csv"
 MODEL_PATH = ROOT / "models" / "wildfire_real.joblib"
 METRICS_PATH = ROOT / "reports" / "real_metrics.json"
-ALTERNATE_GAP_SOURCES = (
-    "VIIRS_NOAA20_SP",
-    "VIIRS_NOAA20_NRT",
-    "VIIRS_NOAA21_NRT",
-    "MODIS_SP",
-    "MODIS_NRT",
-)
-ALTERNATE_GAP_START = date(2026, 7, 1)
-ALTERNATE_GAP_END = date(2026, 8, 20)
 
 
 def ingest_data(
     firms_csv: Path | None = None,
     region: str | None = None,
     boundary_file: Path | None = None,
+    output_root: Path = ROOT,
 ) -> Path:
     settings = get_settings(region_override=region)
     if (settings.end_date - settings.start_date).days < 364:
         raise ValueError("Final data ingestion requires at least one year of dates.")
     raw_dir = ROOT / "data" / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
+    for directory in ("data/processed", "data/raw", "reports", "web"):
+        (output_root / directory).mkdir(parents=True, exist_ok=True)
     source_coverage = {}
     source_frames = []
     if firms_csv is None:
-        standard = fetch_firms_history(
-            settings.firms_key,
-            settings.firms_source,
-            settings.area,
-            settings.start_date,
-            settings.end_date,
-            settings.request_timeout,
-            raw_dir=raw_dir,
-        )
-        standard["firms_source"] = settings.firms_source
-        (raw_dir / f"firms_{settings.firms_source.lower()}.csv").write_text(
-            standard.drop(columns=["firms_source"]).to_csv(index=False),
-            encoding="utf-8",
-        )
-        source_frames = [standard]
-        source_coverage[settings.firms_source] = {
-            **_source_summary(standard),
-            "requested_start_date": settings.start_date.isoformat(),
-            "requested_end_date": settings.end_date.isoformat(),
-        }
-
-        utc_today = datetime.now(timezone.utc).date()
-        nrt_start = max(
-            settings.start_date,
-            settings.end_date - timedelta(days=59),
-            utc_today - timedelta(days=59),
-        )
-        if nrt_start <= settings.end_date:
-            nrt_source = "VIIRS_SNPP_NRT"
-            near_real_time = fetch_firms_history(
-                settings.firms_key,
-                nrt_source,
-                settings.area,
-                nrt_start,
-                settings.end_date,
-                settings.request_timeout,
-                raw_dir=raw_dir,
+        with requests.Session() as client:
+            availability = fetch_availability(settings.firms_key, client)
+        windows = sensor_windows(settings.firms_source, availability, settings.start_date, settings.end_date)
+        for source, first, last in windows:
+            frame = fetch_firms_history(
+                settings.firms_key, source, settings.area, first, last,
+                settings.request_timeout, raw_dir=raw_dir,
             )
-            near_real_time["firms_source"] = nrt_source
-            (raw_dir / "firms_viirs_snpp_nrt.csv").write_text(
-                near_real_time.drop(columns=["firms_source"]).to_csv(index=False),
-                encoding="utf-8",
-            )
-            source_frames.append(near_real_time)
-            source_coverage[nrt_source] = {
-                **_source_summary(near_real_time),
-                "requested_start_date": nrt_start.isoformat(),
-                "requested_end_date": settings.end_date.isoformat(),
-            }
-        gap_start = ALTERNATE_GAP_START
-        gap_end = ALTERNATE_GAP_END
-        if settings.start_date > gap_start or settings.end_date < gap_end:
-            gap_sources = ()
-        else:
-            gap_sources = ALTERNATE_GAP_SOURCES
-        for source in gap_sources:
-            alternate = fetch_firms_history(
-                settings.firms_key,
-                source,
-                settings.area,
-                gap_start,
-                gap_end,
-                settings.request_timeout,
-                raw_dir=raw_dir,
-            )
-            alternate["firms_source"] = source
-            output = raw_dir / f"firms_{source.lower()}_gap.csv"
-            output.write_text(
-                alternate.drop(columns=["firms_source"]).to_csv(index=False),
-                encoding="utf-8",
-            )
-            source_frames.append(alternate)
+            frame["firms_source"] = source
+            source_frames.append(frame)
             source_coverage[source] = {
-                **_source_summary(alternate),
-                "requested_start_date": gap_start.isoformat(),
-                "requested_end_date": gap_end.isoformat(),
+                **_source_summary(frame),
+                "requested_start_date": first.isoformat(),
+                "requested_end_date": last.isoformat(),
             }
 
         identity_columns = [
             column
-            for column in ("acq_date", "latitude", "longitude", "satellite", "instrument")
+            for column in ("acq_date", "acq_time", "latitude", "longitude", "satellite", "instrument")
             if any(column in frame.columns for frame in source_frames)
         ]
         source_frames = [frame for frame in source_frames if not frame.empty]
@@ -152,9 +87,13 @@ def ingest_data(
             )
     else:
         fires = pd.read_csv(firms_csv)
-        fires["firms_source"] = "local_firms_csv"
-        source_frames = [fires]
-        source_coverage["local_firms_csv"] = _source_summary(fires)
+        if "firms_source" not in fires or fires["firms_source"].isna().any():
+            raise ValueError("Training CSV must identify firms_source for every detection.")
+        sensors = set(fires["firms_source"].astype(str).str.replace(r"_(SP|NRT)$", "", regex=True))
+        if len(sensors) != 1:
+            raise ValueError("Training CSV must use one consistent satellite throughout the period.")
+        source_frames = [part.copy() for _, part in fires.groupby("firms_source")]
+        source_coverage = {str(part["firms_source"].iloc[0]): _source_summary(part) for part in source_frames}
 
     if boundary_file is not None:
         boundary_path = boundary_file
@@ -197,51 +136,10 @@ def ingest_data(
     for source_frame in source_frames:
         source = source_frame["firms_source"].iloc[0]
         source_coverage[source].update(_source_summary(source_frame, boundary))
-    alternative_gap_dates = set()
-    for source_frame in source_frames:
-        source = source_frame["firms_source"].iloc[0]
-        if source not in ALTERNATE_GAP_SOURCES:
-            continue
-        latitude = pd.to_numeric(source_frame["latitude"], errors="coerce")
-        longitude = pd.to_numeric(source_frame["longitude"], errors="coerce")
-        valid = latitude.notna() & longitude.notna()
-        inside = pd.Series(False, index=source_frame.index)
-        inside.loc[valid] = covers(
-            boundary,
-            points(longitude.loc[valid].to_numpy(), latitude.loc[valid].to_numpy()),
-        )
-        dates = pd.to_datetime(source_frame.loc[inside, "acq_date"], errors="coerce")
-        alternative_gap_dates.update(
-            dates.dropna()
-            .loc[
-                lambda values: values.between(
-                    pd.Timestamp(gap_start), pd.Timestamp(gap_end)
-                )
-            ]
-            .dt.strftime("%Y-%m-%d")
-            .tolist()
-        )
-    gap_day_count = (gap_end - gap_start).days + 1
-    (ROOT / "reports" / "firms_gap_alternative_sources.json").write_text(
-        json.dumps(
-            {
-                "requested_start_date": gap_start.isoformat(),
-                "requested_end_date": gap_end.isoformat(),
-                "requested_days_inclusive": gap_day_count,
-                "days_with_at_least_one_in_boundary_detection": len(alternative_gap_dates),
-                "days_without_returned_in_boundary_detections": gap_day_count
-                - len(alternative_gap_dates),
-                "sources": {
-                    source: source_coverage[source] for source in ALTERNATE_GAP_SOURCES
-                },
-                "note": (
-                    "Products remain separately attributed; a day without a returned "
-                    "detection is not evidence of no fire or satellite coverage."
-                ),
-            },
-            indent=2,
-        )
-        + "\n",
+    # Preserve the existing workflow artifact name, now documenting a stable sensor.
+    (output_root / "reports" / "firms_gap_alternative_sources.json").write_text(
+        json.dumps({"policy": "same_satellite_sp_then_nrt", "sources": source_coverage,
+                    "note": "No alternate satellite is inserted to fill a temporal gap."}, indent=2) + "\n",
         encoding="utf-8",
     )
     grid = create_grid(
@@ -250,50 +148,34 @@ def ingest_data(
         boundary_path,
     )
     if settings.region == "peru":
-        # Regional weather samples keep the national backfill within the public
-        # archive API's limits while retaining every grid cell and FIRMS event.
-        _, regions, _ = region_data()
-        regional_points = pd.DataFrame([
-            {"cell_id": region["id"],
-             "latitude": region["center"][0],
-             "longitude": region["center"][1]}
-            for region in region_catalog()[1:]
-        ])
+        locations, assignments = national_weather_locations(grid)
+        regional_points = locations.iloc[:25]
         regional_weather = fetch_weather_grid_history(
-            regional_points,
-            settings.start_date,
-            settings.end_date,
-            settings.request_timeout,
-            batch_size=len(regional_points),
-            chunk_days=(settings.end_date - settings.start_date).days + 1,
+            regional_points, settings.start_date, settings.end_date, settings.request_timeout,
+            batch_size=25, chunk_days=(settings.end_date - settings.start_date).days + 1,
             cache_dir=raw_dir,
         )
-        profile_path = ROOT / "web" / "region_weather.json"
-        profile_path.write_text(
-            json.dumps(build_region_weather_profiles(regional_weather), indent=2) + "\n",
-            encoding="utf-8",
+        local_weather = fetch_weather_grid_history(
+            locations.iloc[25:], settings.start_date, settings.end_date, settings.request_timeout,
+            batch_size=14, chunk_days=180, cache_dir=raw_dir,
         )
-        regional_weather = regional_weather.rename(columns={"cell_id": "weather_region"})
-        assignments = []
-        for cell in grid.itertuples():
-            cell_geometry = box(
-                cell.bbox_west + cell.grid_column * cell.cell_degrees,
-                cell.bbox_south + cell.grid_row * cell.cell_degrees,
-                cell.bbox_west + (cell.grid_column + 1) * cell.cell_degrees,
-                cell.bbox_south + (cell.grid_row + 1) * cell.cell_degrees,
-            )
-            weather_region = max(
-                regions,
-                key=lambda region_id: regions[region_id]["geometry"].intersection(cell_geometry).area,
-            )
-            assignments.append({"cell_id": cell.cell_id, "weather_region": weather_region})
-        weather = regional_weather.merge(
-            pd.DataFrame(assignments), on="weather_region", how="inner", validate="many_to_many"
-        ).drop(columns="weather_region")
+        sampled_weather = pd.concat([regional_weather, local_weather], ignore_index=True)
+        profiles = build_region_weather_profiles(sampled_weather)
+        profiles["weather_cells"] = assignments
+        profiles["local_locations"] = [
+            {"id": row.cell_id, "center": [row.latitude, row.longitude]}
+            for row in locations.iloc[25:].itertuples()
+        ]
+        (output_root / "web" / "region_weather.json").write_text(
+            json.dumps(profiles, indent=2) + "\n", encoding="utf-8",
+        )
+        weather = sampled_weather.rename(columns={"cell_id": "weather_id"}).merge(
+            pd.DataFrame(assignments)[["cell_id", "weather_id"]],
+            on="weather_id", how="inner", validate="many_to_many",
+        ).drop(columns="weather_id")
         weather_sampling = (
-            "One Open-Meteo historical series at a representative point per administrative "
-            "region (25 sites); each 0.5-degree cell inherits the series of the region "
-            "with the greatest overlap. Local weather variation within a region is not resolved."
+            f"Open-Meteo UTC daily history: {len(locations) - 25} Puno grid-cell centers; "
+            "25 regional representative points elsewhere, assigned by greatest cell overlap."
         )
     else:
         weather = fetch_weather_grid_history(
@@ -306,7 +188,7 @@ def ingest_data(
             cache_dir=raw_dir,
         )
         weather_sampling = "Open-Meteo historical series at each grid-cell center."
-    weather_path = ROOT / "data" / "raw" / "open_meteo_daily.csv"
+    weather_path = output_root / "data" / "raw" / "open_meteo_daily.csv"
     weather.to_csv(weather_path, index=False)
     dataset, feature_stats = engineer_grid_daily(
         fires,
@@ -316,12 +198,12 @@ def ingest_data(
         settings.end_date.isoformat(),
         boundary_path,
     )
-    save_dataset(dataset, DATA_PATH)
-    (raw_dir / "firms_source_coverage.json").write_text(
+    save_dataset(dataset, output_root / "data/processed/real_daily.csv")
+    (output_root / "data/raw/firms_source_coverage.json").write_text(
         json.dumps(source_coverage, indent=2) + "\n",
         encoding="utf-8",
     )
-    (ROOT / "reports" / "real_ingestion.json").write_text(
+    (output_root / "reports" / "real_ingestion.json").write_text(
         json.dumps(
             {
                 "requested_start_date": settings.start_date.isoformat(),
@@ -332,8 +214,8 @@ def ingest_data(
                 "regional_firms_detections": regional_firms_detections,
                 "firms_sources": source_coverage,
                 "source_sensor_note": (
-                    "SNPP labels are supplemented with separately attributed "
-                    "NOAA20, NOAA21 and MODIS products only during the coverage gap."
+                    "One satellite throughout: standard processing followed by its NRT product. "
+                    "Map observations may include other sensors; training labels do not mix them."
                 ),
                 "features": feature_stats,
                 "rows": int(len(dataset)),
@@ -346,7 +228,7 @@ def ingest_data(
         + "\n",
         encoding="utf-8",
     )
-    return DATA_PATH
+    return output_root / "data/processed/real_daily.csv"
 
 
 def _source_summary(frame: pd.DataFrame, boundary=None) -> dict:
@@ -407,6 +289,7 @@ def main() -> None:
         default=None,
         help="Path to custom GeoJSON boundary file",
     )
+    data.add_argument("--output-root", type=Path, default=ROOT, help="Isolate a candidate dataset and weather profiles")
     demo = commands.add_parser("data-demo", help="Create a deterministic synthetic training dataset")
     demo.add_argument("--days", type=int, default=1095)
     demo.add_argument("--seed", type=int, default=42)
@@ -424,6 +307,7 @@ def main() -> None:
             firms_csv=args.firms_csv,
             region=args.region,
             boundary_file=args.boundary,
+            output_root=args.output_root,
         )
         frame = pd.read_csv(path)
         print(

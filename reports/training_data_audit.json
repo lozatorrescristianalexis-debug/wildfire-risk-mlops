@@ -1,0 +1,34 @@
+{
+  "checked_at": "2026-10-21T16:53:02.224785+00:00",
+  "dataset_sha256": "aa68cbca597e257b1c171037f61f1288ef67f6ca3f2cc3e2dd0dafb07760c741",
+  "model_sha256": "0aba078820b537fe349d4b3ea0e0df3f8565d051ff983e2330ca33b37e54c95e",
+  "snapshot_id": "0f365b9d1a1cd19d7bf9",
+  "snapshot_last_detection": "2026-10-21",
+  "model_dataset_end": "2026-10-10",
+  "national_snapshot_observations": 148067,
+  "observations_after_dataset_end": 14174,
+  "puno_observations_after_dataset_end": 749,
+  "previous_negative_cell_days_now_with_detections": 176,
+  "puno_previous_negative_cell_days_now_with_detections": 9,
+  "puno_train_positive_rate": 0.024155844155844156,
+  "puno_test_positive_rate": 0.1379399585921325,
+  "puno_train_positive_source_combinations": {
+    "VIIRS_SNPP_SP": 372
+  },
+  "puno_test_positive_source_combinations": {
+    "VIIRS_SNPP_NRT": 197,
+    "VIIRS_NOAA20_NRT": 83,
+    "VIIRS_NOAA20_NRT|VIIRS_NOAA21_NRT": 66,
+    "VIIRS_NOAA21_NRT": 62,
+    "VIIRS_SNPP_SP": 62,
+    "MODIS_SP|VIIRS_NOAA20_NRT|VIIRS_NOAA21_NRT": 13,
+    "MODIS_SP": 12,
+    "MODIS_NRT": 10,
+    "MODIS_NRT|VIIRS_NOAA20_NRT|VIIRS_NOAA21_NRT": 10,
+    "MODIS_NRT|VIIRS_NOAA21_NRT": 6,
+    "MODIS_SP|VIIRS_NOAA20_NRT": 6,
+    "MODIS_SP|VIIRS_NOAA21_NRT": 4,
+    "MODIS_NRT|VIIRS_NOAA20_NRT": 2
+  },
+  "interpretation": "New map observations are not yet reflected in the training CSV. Positive rate and sensor mix differ between development and test; this is observational evidence of distribution shift, not proof of a single cause."
+}

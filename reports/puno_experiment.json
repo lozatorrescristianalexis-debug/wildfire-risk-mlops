@@ -1,0 +1,228 @@
+{
+  "region": "puno",
+  "created_at": "2026-10-21T16:50:31.390929+00:00",
+  "dataset_sha256": "aa68cbca597e257b1c171037f61f1288ef67f6ca3f2cc3e2dd0dafb07760c741",
+  "incumbent_sha256": "0aba078820b537fe349d4b3ea0e0df3f8565d051ff983e2330ca33b37e54c95e",
+  "data_usage": {
+    "dataset_rows": 350192,
+    "training_rows": 279950,
+    "test_rows": 70242,
+    "training_date_start": "2024-11-09",
+    "training_date_end": "2026-05-21",
+    "test_date_start": "2026-05-22",
+    "test_date_end": "2026-10-10",
+    "regional_rows": 19264,
+    "regional_cells": 28,
+    "regional_train_rows": 15400,
+    "regional_train_positive_rows": 372,
+    "regional_test_rows": 3864,
+    "regional_test_positive_rows": 533,
+    "retained_detection_count": 120378,
+    "all_eligible_rows_used": true,
+    "note": "All eligible CSV rows are assigned to development or test; no row subsampling. Raw detections are aggregated into cell-days, with weather warm-up and coverage filters."
+  },
+  "protocol": {
+    "selection": "Highest regional temporal OOF F1, tie-break average precision; fixed candidates, no holdout tuning.",
+    "holdout": "Already-inspected historical holdout; exploratory comparison, not new independent validation.",
+    "probability_features": [
+      "temperature_2m_max_lag1",
+      "relative_humidity_2m_mean_lag1",
+      "precipitation_sum_lag1",
+      "wind_speed_10m_max_lag1",
+      "temperature_2m_max_mean_3d",
+      "temperature_2m_max_mean_7d",
+      "relative_humidity_2m_mean_mean_7d",
+      "wind_speed_10m_max_mean_7d",
+      "precipitation_sum_sum_3d",
+      "precipitation_sum_sum_7d",
+      "precipitation_sum_sum_30d",
+      "latitude",
+      "longitude"
+    ],
+    "promotion": "Candidate only. Production model and thresholds remain unchanged."
+  },
+  "candidates": {
+    "national_regional_threshold": {
+      "threshold": 0.08663698557488385,
+      "selection": {
+        "f1": 0.1171875,
+        "precision": 0.08784773060029283,
+        "recall": 0.17595307917888564,
+        "roc_auc": 0.7079616654328436,
+        "pr_auc": 0.06374095932853635,
+        "brier_score": 0.028404715634659638,
+        "threshold": 0.08663698557488385,
+        "confusion_matrix": [
+          [
+            10544,
+            623
+          ],
+          [
+            281,
+            60
+          ]
+        ]
+      },
+      "selection_rows": 11508,
+      "folds": [
+        {
+          "fit_end": "2025-03-28",
+          "validation_start": "2025-03-29",
+          "validation_end": "2025-08-13"
+        },
+        {
+          "fit_end": "2025-08-13",
+          "validation_start": "2025-08-14",
+          "validation_end": "2025-12-29"
+        },
+        {
+          "fit_end": "2025-12-29",
+          "validation_start": "2025-12-30",
+          "validation_end": "2026-05-21"
+        }
+      ],
+      "estimator": "hist_gradient_boosting",
+      "params": {
+        "max_iter": 250,
+        "learning_rate": 0.10211806418789517,
+        "max_leaf_nodes": 15,
+        "l2_regularization": 7.072114131472227
+      }
+    },
+    "regional_logistic": {
+      "threshold": 0.04410992024287978,
+      "selection": {
+        "f1": 0.10578984989278056,
+        "precision": 0.060236060236060235,
+        "recall": 0.4340175953079179,
+        "roc_auc": 0.6874460174997183,
+        "pr_auc": 0.04988405793335398,
+        "brier_score": 0.02846085125811344,
+        "threshold": 0.04410992024287978,
+        "confusion_matrix": [
+          [
+            8858,
+            2309
+          ],
+          [
+            193,
+            148
+          ]
+        ]
+      },
+      "selection_rows": 11508,
+      "folds": [
+        {
+          "fit_end": "2025-03-28",
+          "validation_start": "2025-03-29",
+          "validation_end": "2025-08-13"
+        },
+        {
+          "fit_end": "2025-08-13",
+          "validation_start": "2025-08-14",
+          "validation_end": "2025-12-29"
+        },
+        {
+          "fit_end": "2025-12-29",
+          "validation_start": "2025-12-30",
+          "validation_end": "2026-05-21"
+        }
+      ],
+      "estimator": "logistic",
+      "params": {
+        "C": 1.0
+      }
+    },
+    "regional_hist_gradient_boosting": {
+      "threshold": 0.04320574160749476,
+      "selection": {
+        "f1": 0.09907529722589167,
+        "precision": 0.0639386189258312,
+        "recall": 0.21994134897360704,
+        "roc_auc": 0.5961527300668839,
+        "pr_auc": 0.04510371252335643,
+        "brier_score": 0.02863639495957282,
+        "threshold": 0.04320574160749476,
+        "confusion_matrix": [
+          [
+            10069,
+            1098
+          ],
+          [
+            266,
+            75
+          ]
+        ]
+      },
+      "selection_rows": 11508,
+      "folds": [
+        {
+          "fit_end": "2025-03-28",
+          "validation_start": "2025-03-29",
+          "validation_end": "2025-08-13"
+        },
+        {
+          "fit_end": "2025-08-13",
+          "validation_start": "2025-08-14",
+          "validation_end": "2025-12-29"
+        },
+        {
+          "fit_end": "2025-12-29",
+          "validation_start": "2025-12-30",
+          "validation_end": "2026-05-21"
+        }
+      ],
+      "estimator": "hist_gradient_boosting",
+      "params": {
+        "max_iter": 150,
+        "learning_rate": 0.05,
+        "max_leaf_nodes": 15,
+        "l2_regularization": 5.0
+      }
+    }
+  },
+  "selected_candidate": "national_regional_threshold",
+  "holdout_comparison": {
+    "incumbent": {
+      "f1": 0.02867383512544803,
+      "precision": 0.32,
+      "recall": 0.0150093808630394,
+      "roc_auc": 0.6591015211586196,
+      "pr_auc": 0.2108025659644915,
+      "brier_score": 0.12051119533294455,
+      "threshold": 0.17483420669769908,
+      "confusion_matrix": [
+        [
+          3314,
+          17
+        ],
+        [
+          525,
+          8
+        ]
+      ]
+    },
+    "selected_challenger": {
+      "f1": 0.2980251346499102,
+      "precision": 0.218804920913884,
+      "recall": 0.46716697936210133,
+      "roc_auc": 0.6591015211586196,
+      "pr_auc": 0.2108025659644915,
+      "brier_score": 0.12051119533294455,
+      "threshold": 0.08663698557488385,
+      "confusion_matrix": [
+        [
+          2442,
+          889
+        ],
+        [
+          284,
+          249
+        ]
+      ]
+    },
+    "positive_rate_baseline": 0.1379399585921325
+  },
+  "candidate_artifact": "/home/roger/Documents/Git/AprendizajeM/wildfire-risk-mlops/models/puno_candidate.joblib",
+  "production_unchanged": true
+}

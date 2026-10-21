@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 import joblib
@@ -436,6 +437,7 @@ def train_model(
     training_region: str | None = None,
     weather_sampling: str | None = None,
     model_names: tuple[str, ...] | None = None,
+    holdout_start: str | None = None,
 ) -> dict:
     frame = load_training_data(input_path, allow_demo=allow_demo)
     if allow_demo:
@@ -458,7 +460,10 @@ def train_model(
         raise ValueError("Final training requires at least one year and 60 active dates of real data.")
     if frame["label"].nunique() != 2:
         raise ValueError("Real dataset must contain positive and negative grid-day labels.")
-    split_index = int(len(unique_dates) * 0.8)
+    split_index = (int(len(unique_dates) * 0.8) if holdout_start is None
+                   else int((unique_dates < pd.Timestamp(holdout_start)).sum()))
+    if not 0 < split_index < len(unique_dates):
+        raise ValueError("holdout_start must leave nonempty training and test partitions.")
     train_dates, test_dates = unique_dates[:split_index], unique_dates[split_index:]
     train = frame.loc[frame["date"].isin(train_dates)].reset_index(drop=True)
     test = frame.loc[frame["date"].isin(test_dates)].reset_index(drop=True)
@@ -569,6 +574,7 @@ def train_model(
         "training_region": training_region,
         "weather_sampling": weather_sampling,
         "dataset": str(input_path),
+        "dataset_sha256": hashlib.sha256(input_path.read_bytes()).hexdigest(),
         "rows": int(len(frame)),
         "date_start": frame["date"].min().date().isoformat(),
         "date_end": frame["date"].max().date().isoformat(),
@@ -578,13 +584,16 @@ def train_model(
         "positive_rate": float(frame["label"].mean()),
         "detection_count_in_retained_examples": int(frame["fire_count"].sum()),
         "train_rows": int(len(train)),
+        "train_date_start": train["date"].min().date().isoformat(),
+        "train_date_end": train["date"].max().date().isoformat(),
         "train_positive_rows": int(train_y.sum()),
         "test_rows": int(len(test)),
         "test_positive_rows": int(test_y.sum()),
         "test_negative_rows": int((test_y == 0).sum()),
         "test_date_start": test["date"].min().date().isoformat(),
         "test_date_end": test["date"].max().date().isoformat(),
-        "temporal_split": "80/20 by ascending distinct active date; no date appears in both partitions",
+        "temporal_split": ("80/20 by ascending distinct active date" if holdout_start is None
+                           else f"Fixed holdout from {holdout_start}") + "; no date appears in both partitions",
         "tuning": {
             "method": "Optuna TPE optimizing average precision across 3 expanding temporal folds",
             "trials_per_model": n_trials,
