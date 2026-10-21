@@ -1,154 +1,63 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Wildfire Hotspot Classifier</title>
-  <style>
-    :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; background: #f3f6f4; color: #17231d; }
-    body { margin: 0; }
-    main { max-width: 1050px; margin: 0 auto; padding: 2rem 1rem 4rem; }
-    header, section { background: white; border: 1px solid #d9e2dc; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
-    h1, h2 { margin-top: 0; }
-    .muted { color: #506158; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .8rem; }
-    label { display: grid; gap: .25rem; font-size: .9rem; }
-    input { border: 1px solid #aab9af; border-radius: 6px; padding: .55rem; font: inherit; }
-    button { border: 0; border-radius: 6px; background: #176b48; color: white; padding: .7rem 1rem; font: inherit; cursor: pointer; }
-    button:disabled { opacity: .6; cursor: wait; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: .65rem; border-bottom: 1px solid #d9e2dc; }
-    .scroll { overflow-x: auto; }
-    #status { min-height: 1.5rem; }
-  </style>
+  <meta name="theme-color" content="#101a23">
+  <meta name="description" content="Explorador retrospectivo de focos de calor y condiciones meteorológicas en Perú.">
+  <title>Vigía Fuego · Explorador de focos de calor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="/app.css">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script defer src="/app.js"></script>
 </head>
 <body>
-<main>
-  <header>
-    <h1>Wildfire Hotspot Classifier</h1>
-    <p class="muted">Retrospective FIRMS cell-day classification for Madre de Dios, Peru. This is not a fire forecast or an operational alert.</p>
-    <p id="model-summary" class="muted">Loading model information…</p>
-  </header>
-  <section>
-    <h2>Score a grid cell</h2>
-    <form id="predict-form">
-      <div class="grid">
-        <label>Grid cell ID<input name="cell_id" value="r013_c007" required maxlength="64"></label>
-        <label>Observation date<input name="date" type="date" value="2026-10-10" required></label>
-      </div>
-      <p>
-        <button id="load-positive-example" type="button" disabled>Load real positive example</button>
-        <button id="load-negative-example" type="button" disabled>Load real negative example</button>
-      </p>
-      <h3>Lagged weather and location features</h3>
-      <div id="feature-fields" class="grid"></div>
-      <p><button id="submit-button" type="submit">Get prediction</button></p>
-    </form>
-    <p id="status" role="status" aria-live="polite"></p>
-  </section>
-  <section>
-    <h2>Prediction results</h2>
-    <div class="scroll">
-      <table>
-        <thead><tr><th>Cell</th><th>Date</th><th>Hotspot probability</th><th>Threshold</th><th>Classification</th></tr></thead>
-        <tbody id="results"><tr><td colspan="5">No predictions yet.</td></tr></tbody>
-      </table>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#screen-grid" aria-label="Vigía Fuego, inicio"><span class="brand-mark">♨</span><span><strong>VIGÍA<span>FUEGO</span></strong><small>Inteligencia territorial</small></span></a>
+      <span class="sidebar-caption">EXPLORAR</span>
+      <nav class="tab-navigation" aria-label="Secciones">
+        <button class="tab-btn active" data-tab="screen-grid" aria-current="page"><span class="nav-icon">◫</span> Panorama</button>
+        <button class="tab-btn" data-tab="screen-history"><span class="nav-icon">◉</span> Observaciones</button>
+        <button class="tab-btn" data-tab="screen-point"><span class="nav-icon">⌖</span> Analizar un punto</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="source-mini"><span class="source-mini-icon">i</span><div><strong>Cómo leer esta plataforma</strong><p>Clasificación retrospectiva de detecciones FIRMS. No es un pronóstico ni una alerta en tiempo real.</p></div></div><div class="sidebar-credit">FIRMS · Open-Meteo · Modelo ML</div></div>
+    </aside>
+    <div class="workspace">
+      <header class="app-header"><div class="header-heading"><span class="eyebrow">CENTRO DE ANÁLISIS / PERÚ</span><span class="header-divider"></span><span id="header-section-name">Panorama territorial</span></div><div class="header-controls"><label class="region-selector" for="region-select"><span>Región</span><select id="region-select"><option>Cargando…</option></select></label><div class="model-badge"><span class="status-dot"></span><span id="model-badge-text">Cargando modelo…</span></div></div></header>
+      <main class="app-content">
+        <section id="screen-grid" class="screen-view active" aria-labelledby="grid-title">
+          <div class="page-intro"><div><div class="section-kicker"><span class="kicker-line"></span> VISTA GENERAL</div><h1 id="grid-title">El territorio, <em>en perspectiva.</em></h1><p>Explora una fecha histórica con clima de cada región y compara condiciones locales registradas.</p></div><div class="intro-note"><span class="intro-note-icon">↗</span><div><strong>Mapa retrospectivo</strong><span>Datos históricos; no es un pronóstico.</span></div></div></div>
+          <div id="region-scope-note" class="scope-note" hidden></div>
+          <div class="kpi-row" aria-label="Resumen de la malla">
+            <article class="kpi-card"><span class="kpi-icon icon-cells">▦</span><div class="kpi-label">Muestras evaluadas</div><div id="kpi-total-cells" class="kpi-value">—</div><div class="kpi-sub">Puntos de la malla dentro del límite</div></article>
+            <article class="kpi-card"><span class="kpi-icon icon-alert">◈</span><div class="kpi-label">Sobre el umbral</div><div id="kpi-high-risk" class="kpi-value">—</div><div class="kpi-sub">Clasificadas como foco</div></article>
+            <article class="kpi-card"><span class="kpi-icon icon-peak">↗</span><div class="kpi-label">Mayor prob. de detección</div><div id="kpi-max-prob" class="kpi-value">—</div><div class="kpi-sub">Mayor valor de la malla</div></article>
+            <article class="kpi-card"><span class="kpi-icon icon-threshold">⌁</span><div class="kpi-label">Umbral del modelo</div><div id="kpi-threshold" class="kpi-value">—</div><div class="kpi-sub">Corte de clasificación</div></article>
+          </div>
+          <div class="dashboard-grid">
+            <div class="main-column"><div class="section-card map-card"><div class="card-topline"><div><span class="section-kicker">01 / MAPA INTERACTIVO</span><h2>Distribución espacial</h2></div><span class="map-live-label"><span></span> Análisis retrospectivo</span></div><div class="map-controls"><label for="weather-preset-select">Condiciones usadas por el modelo <select id="weather-preset-select" class="input-control" aria-describedby="weather-profile-explainer"><option value="observed">Fecha histórica común</option><option value="dry">Comparar días secos por región</option><option value="wet">Comparar días húmedos por región</option></select></label><button id="btn-recalculate-grid" class="btn btn-primary" type="button">↻ &nbsp;Actualizar análisis</button></div><p id="weather-profile-explainer" class="map-controls-note">Este selector cambia los datos de temperatura, humedad, lluvia y viento que recibe el modelo. Los colores indican detecciones FIRMS estimadas, no el tiempo atmosférico.</p><div class="map-stage"><div id="map-grid" class="leaflet-map" aria-label="Superficie interpolada de probabilidades dentro de la región"></div><div class="map-overlay-label"><span class="map-overlay-dot"></span> DETECCIÓN FIRMS · MODELO</div></div><div class="map-footer"><div class="gradient-legend"><span class="legend-title">PROB. DE DETECCIÓN</span><div class="gradient-scale"><i></i><div><span style="left:0">0%</span><span style="left:15%">15%</span><span style="left:30%">30%</span><span style="left:60%">60%</span><span style="left:100%">100%</span></div></div></div><span class="map-hint">Haz clic para evaluar la coordenada exacta</span></div></div><div class="method-strip"><span class="method-icon">ⓘ</span><p>La superficie de color se <strong>interpola entre muestras del modelo</strong> y se recorta al límite regional. Los indicadores cuentan solo centros de muestreo dentro de la región. Al hacer clic se calcula el valor para la coordenada exacta. Ningún color indica superficie que se incendiará.</p></div></div>
+            <aside class="insight-column"><div class="section-card insight-card"><span class="section-kicker">LECTURA RÁPIDA</span><h2 id="grid-insight-title">Preparando el análisis</h2><p id="grid-insight-text">Selecciona un escenario para explorar la distribución de probabilidades.</p><div class="distribution"><div class="distribution-head"><strong>Distribución de muestras</strong><span id="distribution-total">—</span></div><div id="distribution-bars" class="distribution-bars" aria-label="Distribución por intervalo"></div></div></div><div class="section-card context-card"><span class="section-kicker">SOBRE EL MODELO</span><h2>Qué significa este resultado</h2><p>La cifra calibrada estima una <strong>detección satelital de foco de calor</strong> por celda y día en el conjunto estudiado, que incluye días con actividad FIRMS en el país. No es la probabilidad física de que el terreno se incendie.</p><div class="model-facts"><div><span>Datos del modelo</span><strong id="model-period">—</strong></div><div><span>Validación temporal · F1</span><strong id="model-f1">—</strong></div><div><span>Fuente</span><strong>NASA FIRMS + Open-Meteo</strong></div><div><span>Resolución climática</span><strong id="model-weather-resolution">Cargando…</strong></div></div></div></aside>
+          </div>
+        </section>
+        <section id="screen-history" class="screen-view" aria-labelledby="history-title">
+          <div class="page-intro"><div><div class="section-kicker"><span class="kicker-line"></span> ARCHIVO SATELITAL</div><h1 id="history-title">Huellas <em>en el archivo.</em></h1><p>Consulta las detecciones incluidas en el archivo visual y filtra por sensor o confianza.</p></div><div class="intro-note"><span class="intro-note-icon">◎</span><div><strong>Archivo de referencia</strong><span id="history-range">Una selección almacenada; no es un flujo en vivo.</span></div></div></div>
+          <div class="kpi-row history-kpis"><article class="kpi-card"><span class="kpi-icon icon-alert">◉</span><div class="kpi-label">Puntos visibles</div><div id="kpi-history-total" class="kpi-value">—</div><div class="kpi-sub">Tras aplicar los filtros</div></article><article class="kpi-card"><span class="kpi-icon icon-peak">✦</span><div class="kpi-label">Confianza alta</div><div id="kpi-history-high" class="kpi-value">—</div><div class="kpi-sub">Entre las detecciones visibles</div></article><article class="kpi-card"><span class="kpi-icon icon-cells">◫</span><div class="kpi-label">Fuera de Perú</div><div id="kpi-history-unmapped" class="kpi-value">—</div><div class="kpi-sub">Puntos del archivo sin región</div></article></div>
+          <div class="dashboard-grid"><div class="main-column"><div class="section-card map-card"><div class="card-topline"><div><span class="section-kicker">02 / DETECCIONES</span><h2>Puntos de referencia</h2></div><span class="map-live-label archival">ARCHIVO</span></div><div class="map-controls"><label for="filter-confidence">Confianza <select id="filter-confidence" class="input-control"><option value="all">Todas</option><option value="high">Alta</option><option value="nominal">Nominal y alta</option></select></label><label for="filter-satellite">Instrumento <select id="filter-satellite" class="input-control"><option value="all">Todos</option><option value="VIIRS">VIIRS</option><option value="MODIS">MODIS</option></select></label></div><div class="map-stage"><div id="map-history" class="leaflet-map" aria-label="Mapa de detecciones históricas"></div><div id="history-empty" class="map-empty" hidden>Sin puntos en esta muestra para la región y los filtros seleccionados.</div><div class="map-overlay-label"><span class="map-overlay-dot orange"></span> DETECCIONES ARCHIVADAS</div></div><div class="map-footer"><div class="legend-container"><span class="legend-title">CONFIANZA</span><span class="legend-item"><i class="legend-color legend-ext"></i> Alta</span><span class="legend-item"><i class="legend-color legend-mod"></i> Nominal</span><span class="legend-item"><i class="legend-color legend-unknown"></i> Baja</span></div><span class="map-hint">Selecciona un punto para ver sus datos</span></div></div></div><aside class="insight-column"><div class="section-card insight-card"><span class="section-kicker">EN CONTEXTO</span><h2>Un punto térmico no confirma un incendio</h2><p>Los sensores detectan anomalías térmicas. La confianza y la potencia radiativa ayudan a interpretar cada observación; la ausencia de un punto tampoco confirma ausencia de fuego.</p><div class="source-callout"><span>FUENTE VISUAL</span><strong>Muestra local con formato FIRMS</strong><small>El archivo local no incluye comprobantes de descarga por punto. Úsalo como referencia visual, no como registro oficial completo.</small></div></div><div class="section-card context-card"><span class="section-kicker">FILTROS ACTIVOS</span><h2>Lectura del archivo</h2><p id="history-summary">Cargando observaciones…</p></div></aside></div>
+        </section>
+        <section id="screen-point" class="screen-view" aria-labelledby="point-title">
+          <div class="page-intro"><div><div class="section-kicker"><span class="kicker-line"></span> LABORATORIO DE INFERENCIA</div><h1 id="point-title">Investiga <em>un lugar.</em></h1><p>Introduce condiciones anteriores a la fecha de observación o carga un caso del conjunto de prueba.</p></div><div class="intro-note"><span class="intro-note-icon">⌖</span><div><strong>Modelo retrospectivo</strong><span>El resultado no anticipa incendios futuros.</span></div></div></div>
+          <div id="point-scope-note" class="scope-note" hidden></div>
+          <div class="prediction-split"><div class="section-card form-panel"><div class="card-topline"><div><span class="section-kicker">03 / ENTRADAS</span><h2>Parámetros de análisis</h2></div></div><form id="predict-form"><div class="form-section-title">Ubicación y fecha <small>Haz clic en el mapa para elegir un punto</small></div><div class="form-grid"><div class="form-group"><label for="point-cell-id">Identificador de celda</label><input class="input-control" id="point-cell-id" name="cell_id" value="r002_c012" required maxlength="64" pattern="[A-Za-z0-9_-]+"></div><div class="form-group"><label for="point-date">Fecha de observación</label><input class="input-control" id="point-date" name="date" type="date" value="2026-10-10" required></div><div class="form-group"><label for="point-lat">Latitud</label><input class="input-control" id="point-lat" type="number" step="any" min="-90" max="90" value="-12.7164" required></div><div class="form-group"><label for="point-lon">Longitud</label><input class="input-control" id="point-lon" type="number" step="any" min="-180" max="180" value="-69.3037" required></div></div><div class="form-section-title examples-title">Casos del conjunto de prueba</div><div class="example-buttons"><button id="load-positive-example" class="btn btn-secondary" type="button" disabled>Cargar caso con detección</button><button id="load-negative-example" class="btn btn-secondary" type="button" disabled>Cargar caso sin detección</button></div><p class="form-help">“Sin detección” significa que no se registró un foco en esa celda durante un día con actividad en la región. La fecha identifica el caso, pero no modifica la probabilidad del modelo.</p><details class="weather-details"><summary><span><strong>Variables meteorológicas anteriores</strong><small>11 entradas de temperatura, humedad, lluvia y viento</small></span><span class="details-chevron">⌄</span></summary><div id="feature-fields"></div></details><button id="submit-button" class="btn btn-primary submit-btn" type="submit">Calcular probabilidad <span>→</span></button></form><div id="status-indicator" class="status-message" role="status" aria-live="polite">Selecciona un punto o carga un ejemplo para iniciar.</div></div>
+          <div class="result-display-panel"><div class="section-card picker-card"><div class="card-topline"><div><span class="section-kicker">SELECCIÓN GEOGRÁFICA</span><h2>Ubica la celda</h2></div><span class="map-live-label archival">MAPA INTERACTIVO</span></div><div class="map-stage point-map-stage"><div id="map-point-picker" class="leaflet-map" aria-label="Mapa para seleccionar coordenadas"></div></div><div class="picker-foot">Región según coordenadas: <strong id="point-region-label">—</strong>. Haz clic en el mapa o escribe coordenadas.</div></div><div class="section-card diagnosis-card"><div class="card-header-status"><div><span class="section-kicker">RESULTADO DEL MODELO</span><h2>Lectura de la celda</h2></div><span id="result-risk-badge" class="risk-badge neutral">Sin análisis</span></div><div class="prob-meter-box"><div class="meter-header"><span>Probabilidad de detección</span><strong id="result-prob-text">—</strong></div><div class="meter-bar-track"><div id="result-meter-fill" class="meter-bar-fill"></div><div id="result-threshold-marker" class="threshold-marker"></div></div><div class="meter-scale"><span>0%</span><span id="threshold-caption">Umbral —</span><span>100%</span></div></div><p id="result-diagnostic-text" class="status-message">Completa las variables y ejecuta el modelo para ver una clasificación retrospectiva.</p></div></div></div>
+          <div class="section-card table-panel"><div class="card-topline"><div><span class="section-kicker">REGISTRO LOCAL</span><h2>Consultas de esta sesión</h2></div><span class="table-note">Se borra al recargar la página</span></div><div class="table-wrapper"><table class="data-table"><thead><tr><th>Celda</th><th>Fecha</th><th>Probabilidad</th><th>Umbral</th><th>Clasificación</th></tr></thead><tbody id="results"><tr><td colspan="5" class="empty-table">Todavía no hay consultas.</td></tr></tbody></table></div></div>
+        </section>
+      </main>
+      <footer class="app-footer"><span>VIGÍA FUEGO · EXPLORADOR RETROSPECTIVO</span><span>Datos: FIRMS y Open-Meteo · Límites: geoBoundaries · No apto para alertas operativas</span></footer>
     </div>
-  </section>
-</main>
-<script>
-  const form = document.querySelector("#predict-form");
-  const fields = document.querySelector("#feature-fields");
-  const status = document.querySelector("#status");
-  const button = document.querySelector("#submit-button");
-  const results = document.querySelector("#results");
-
-  async function loadRealExample(kind) {
-    try {
-      const response = await fetch("/examples/real");
-      if (!response.ok) throw new Error(`Real examples request failed (${response.status}).`);
-      const examples = await response.json();
-      const example = examples[kind];
-      if (!example) throw new Error(`Real ${kind} example is unavailable.`);
-      form.querySelector('[name="cell_id"]').value = example.cell_id;
-      form.querySelector('[name="date"]').value = example.date;
-      for (const input of fields.querySelectorAll("input")) {
-        input.value = String(example.features[input.name]);
-      }
-      const outcome = example.observed_hotspot ? "observed hotspot" : "no hotspot observed";
-      status.textContent =
-        `Loaded real ${kind} holdout example: ${example.cell_id} on ${example.date} · ${outcome} · ` +
-        `recorded model probability ${(example.expected_probability * 100).toFixed(2)}% ` +
-        `(threshold ${(example.threshold * 100).toFixed(2)}%). Select Get prediction to score it.`;
-    } catch (error) {
-      status.textContent = error.message;
-    }
-  }
-
-  document.querySelector("#load-positive-example").addEventListener("click", () => loadRealExample("positive"));
-  document.querySelector("#load-negative-example").addEventListener("click", () => loadRealExample("negative"));
-
-  async function loadModelInfo() {
-    const response = await fetch("/model-info");
-    if (!response.ok) throw new Error(`Model information request failed (${response.status}).`);
-    const info = await response.json();
-    document.querySelector("#model-summary").textContent =
-      `${info.model} · threshold ${Number(info.selected_threshold).toFixed(4)} · data ${info.date_start} to ${info.date_end}`;
-    for (const feature of info.features) {
-      const label = document.createElement("label");
-      label.textContent = feature;
-      const input = document.createElement("input");
-      input.name = feature;
-      input.type = "number";
-      input.step = "any";
-      input.required = true;
-      input.value = "0";
-      label.append(input);
-      fields.append(label);
-    }
-    document.querySelector("#load-positive-example").disabled = false;
-    document.querySelector("#load-negative-example").disabled = false;
-  }
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    button.disabled = true;
-    status.textContent = "Scoring…";
-    const values = new FormData(form);
-    const features = Object.fromEntries(
-      [...fields.querySelectorAll("input")].map((input) => [input.name, Number(input.value)])
-    );
-    try {
-      const response = await fetch("/predict", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cell_id: values.get("cell_id"), date: values.get("date"), features })
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.detail ?? `Prediction failed (${response.status}).`);
-      if (results.querySelector("td[colspan]")) results.replaceChildren();
-      const row = document.createElement("tr");
-      for (const value of [
-        payload.cell_id,
-        payload.date,
-        `${(payload.probability * 100).toFixed(2)}%`,
-        `${(payload.threshold * 100).toFixed(2)}%`,
-        payload.predicted_hotspot ? "Hotspot detected" : "No hotspot detected"
-      ]) {
-        const cell = document.createElement("td");
-        cell.textContent = value;
-        row.append(cell);
-      }
-      results.prepend(row);
-      status.textContent = `Prediction completed with ${payload.model}.`;
-    } catch (error) {
-      status.textContent = error.message;
-    } finally {
-      button.disabled = false;
-    }
-  });
-
-  loadModelInfo().catch((error) => { status.textContent = error.message; });
-</script>
+  </div>
 </body>
 </html>

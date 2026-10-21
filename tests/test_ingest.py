@@ -4,9 +4,11 @@ import pandas as pd
 import pytest
 import requests
 
+from src.wildfire.config import get_settings
 from src.wildfire.ingest import (
     FIRMS_MAX_DAYS_PER_REQUEST,
     build_daily_dataset,
+    fetch_boundary_geojson,
     fetch_firms,
     fetch_firms_history,
     fetch_weather,
@@ -334,3 +336,163 @@ def test_grid_daily_records_sensor_provenance_for_positive_and_negative_rows(tmp
     negative_sources = dataset.loc[dataset["label"].eq(0), "firms_sources"]
     assert positive_sources.eq("MODIS_NRT|VIIRS_NOAA21_NRT").sum() == 1
     assert negative_sources.eq("none").all()
+
+
+def test_get_settings_region_presets(monkeypatch):
+    monkeypatch.delenv("REGION", raising=False)
+    monkeypatch.delenv("REGION_NAME", raising=False)
+    monkeypatch.delenv("FIRMS_AREA", raising=False)
+    monkeypatch.delenv("GRID_CELL_DEGREES", raising=False)
+    default_settings = get_settings()
+    assert default_settings.region == "madre_de_dios"
+    assert default_settings.grid_cell_degrees == 0.25
+
+    peru_settings = get_settings(region_override="peru")
+    assert peru_settings.region == "peru"
+    assert peru_settings.grid_cell_degrees == 0.5
+    assert "-81.33" in peru_settings.area
+    assert peru_settings.weather_batch_size == 25
+    assert peru_settings.weather_chunk_days == 180
+
+
+def test_border_grid_sample_is_inside_boundary(tmp_path):
+    from shapely.geometry import Point, box, mapping
+    import json
+
+    boundary = box(-72, -13, -71.9, -12.9)
+    path = tmp_path / "edge.geojson"
+    path.write_text(json.dumps({"type": "FeatureCollection", "features": [
+        {"type": "Feature", "properties": {}, "geometry": mapping(boundary)}
+    ]}))
+    grid = create_grid("-72,-13,-71,-12", 0.5, path)
+    assert len(grid) == 1
+    assert boundary.covers(Point(grid.iloc[0]["longitude"], grid.iloc[0]["latitude"]))
+
+
+def test_explicit_peru_region_ignores_madre_de_dios_geometry_in_env(monkeypatch):
+    monkeypatch.setenv("REGION", "madre_de_dios")
+    monkeypatch.setenv("FIRMS_AREA", "-72.4,-13.3,-68.7,-9.9")
+    monkeypatch.setenv("GRID_CELL_DEGREES", "0.25")
+    monkeypatch.setenv("METEO_LATITUDE", "-12")
+    monkeypatch.setenv("METEO_LONGITUDE", "-70")
+
+    settings = get_settings(region_override="peru")
+    assert settings.area == "-81.33,-18.35,-68.65,-0.038"
+    assert settings.grid_cell_degrees == 0.5
+    assert settings.latitude == -9.19
+    assert settings.longitude == -75.015
+
+    monkeypatch.setenv("REGION", "peru")
+    assert get_settings(region_override="peru").area == settings.area
+
+
+def test_fetch_boundary_geojson_queries_country(tmp_path):
+    class CountryResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [[[-80, -15], [-70, -15], [-70, -5], [-80, -5], [-80, -15]]],
+                        },
+                    }
+                ],
+            }
+
+    out_file = tmp_path / "peru_boundary.geojson"
+    from unittest.mock import patch
+    with patch("requests.get", return_value=CountryResponse()):
+        path = fetch_boundary_geojson(out_file, state=None, country="Peru")
+        assert path.exists()
+
+
+def test_weather_grid_history_chunk_days_large_block(tmp_path):
+    class LongChunkSession:
+        def __init__(self):
+            self.calls = []
+
+        def get(self, url, **kwargs):
+            params = kwargs["params"]
+            self.calls.append(params)
+            dates = pd.date_range(params["start_date"], params["end_date"]).strftime("%Y-%m-%d").tolist()
+            count = len(params["latitude"].split(","))
+            return Response(
+                payload=[
+                    {
+                        "daily": {
+                            "time": dates,
+                            "temperature_2m_max": [20] * len(dates),
+                            "relative_humidity_2m_mean": [50] * len(dates),
+                            "precipitation_sum": [0] * len(dates),
+                            "wind_speed_10m_max": [10] * len(dates),
+                        }
+                    }
+                    for _ in range(count)
+                ]
+            )
+
+    grid = pd.DataFrame(
+        {
+            "cell_id": ["c1", "c2"],
+            "latitude": [-10.0, -11.0],
+            "longitude": [-75.0, -76.0],
+        }
+    )
+    session = LongChunkSession()
+    # 60 days with chunk_days=90 should be 1 call instead of 2!
+    result = fetch_weather_grid_history(
+        grid,
+        date(2025, 1, 1),
+        date(2025, 3, 1),
+        session=session,
+        batch_size=10,
+        chunk_days=90,
+        cache_dir=tmp_path,
+    )
+    assert len(session.calls) == 1
+    assert len(result) == 60 * 2
+
+
+def test_weather_grid_splits_rate_limited_block_and_caches_result(tmp_path, monkeypatch):
+    monkeypatch.setattr("src.wildfire.ingest.WEATHER_MIN_REQUEST_INTERVAL", 0)
+
+    class AdaptiveSession:
+        def __init__(self):
+            self.calls = []
+
+        def get(self, url, **kwargs):
+            params = kwargs["params"]
+            self.calls.append((params["start_date"], params["end_date"]))
+            dates = pd.date_range(params["start_date"], params["end_date"])
+            if len(dates) > 30:
+                response = requests.Response()
+                response.status_code = 429
+                return response
+            return Response(payload=[{"daily": {
+                "time": dates.strftime("%Y-%m-%d").tolist(),
+                "temperature_2m_max": [20] * len(dates),
+                "relative_humidity_2m_mean": [50] * len(dates),
+                "precipitation_sum": [0] * len(dates),
+                "wind_speed_10m_max": [10] * len(dates),
+            }}])
+
+    grid = pd.DataFrame({"cell_id": ["c1"], "latitude": [-12.0], "longitude": [-70.0]})
+    session = AdaptiveSession()
+    first = fetch_weather_grid_history(
+        grid, date(2025, 1, 1), date(2025, 3, 1),
+        session=session, chunk_days=90, cache_dir=tmp_path,
+    )
+    assert len(first) == 60
+    assert len(session.calls) == 3
+    second = fetch_weather_grid_history(
+        grid, date(2025, 1, 1), date(2025, 3, 1),
+        session=session, chunk_days=90, cache_dir=tmp_path,
+    )
+    assert len(session.calls) == 3
+    pd.testing.assert_frame_equal(first, second)

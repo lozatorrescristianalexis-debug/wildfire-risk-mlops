@@ -302,11 +302,14 @@ def fetch_weather_grid_history(
     end_date: date,
     timeout: int = 60,
     batch_size: int = 50,
+    chunk_days: int = 30,
     session: requests.Session | None = None,
     cache_dir: Path | None = None,
 ) -> pd.DataFrame:
     if start_date > end_date:
         raise ValueError("START_DATE must be on or before END_DATE.")
+    if chunk_days <= 0:
+        raise ValueError("chunk_days must be greater than zero.")
     if grid.empty or not {"cell_id", "latitude", "longitude"}.issubset(grid.columns):
         raise ValueError("Grid must contain cell_id, latitude, and longitude.")
     client = session or requests.Session()
@@ -324,7 +327,7 @@ def fetch_weather_grid_history(
         }
         chunk_start = start_date
         while chunk_start <= end_date:
-            chunk_end = min(chunk_start + timedelta(days=29), end_date)
+            chunk_end = min(chunk_start + timedelta(days=chunk_days - 1), end_date)
             cache_path = (
                 cache_dir
                 / f"open_meteo_grid_{batch_id}_{chunk_start}_{chunk_end}.csv"
@@ -345,68 +348,81 @@ def fetch_weather_grid_history(
                     raise ValueError(f"Open-Meteo cache is incomplete or invalid: {cache_path.name}")
                 frames.append(cached)
             else:
-                params = {
-                    **coordinates,
-                    "start_date": chunk_start.isoformat(),
-                    "end_date": chunk_end.isoformat(),
-                    "daily": ",".join(WEATHER_COLUMNS),
-                    "timezone": "UTC",
-                }
-                payload = None
-                last_error: requests.RequestException | None = None
-                for attempt in range(WEATHER_RETRY_ATTEMPTS):
-                    global _LAST_WEATHER_REQUEST
-                    with _WEATHER_RATE_LOCK:
-                        wait_for = WEATHER_MIN_REQUEST_INTERVAL - (
-                            time.monotonic() - _LAST_WEATHER_REQUEST
-                        )
-                        if wait_for > 0:
-                            time.sleep(wait_for)
-                        _LAST_WEATHER_REQUEST = time.monotonic()
-                    try:
-                        response = client.get(WEATHER_URL, params=params, timeout=timeout)
-                        response.raise_for_status()
-                        payload = response.json()
-                        break
-                    except requests.RequestException as exc:
-                        last_error = exc
-                        status = exc.response.status_code if exc.response is not None else None
-                        if status is not None and status != 429 and status < 500:
-                            break
-                        if attempt + 1 < WEATHER_RETRY_ATTEMPTS:
-                            retry_after = (
-                                exc.response.headers.get("Retry-After")
-                                if exc.response is not None
-                                else None
+                def download_window(window_start: date, window_end: date) -> pd.DataFrame:
+                    params = {
+                        **coordinates,
+                        "start_date": window_start.isoformat(),
+                        "end_date": window_end.isoformat(),
+                        "daily": ",".join(WEATHER_COLUMNS),
+                        "timezone": "UTC",
+                    }
+                    payload = None
+                    last_error: requests.RequestException | None = None
+                    for attempt in range(WEATHER_RETRY_ATTEMPTS):
+                        global _LAST_WEATHER_REQUEST
+                        with _WEATHER_RATE_LOCK:
+                            wait_for = WEATHER_MIN_REQUEST_INTERVAL - (
+                                time.monotonic() - _LAST_WEATHER_REQUEST
                             )
-                            try:
-                                delay = float(retry_after) if retry_after else 2**attempt
-                            except ValueError:
+                            if wait_for > 0:
+                                time.sleep(wait_for)
+                            _LAST_WEATHER_REQUEST = time.monotonic()
+                        try:
+                            response = client.get(WEATHER_URL, params=params, timeout=timeout)
+                            response.raise_for_status()
+                            payload = response.json()
+                            break
+                        except requests.RequestException as exc:
+                            last_error = exc
+                            status = exc.response.status_code if exc.response is not None else None
+                            days = (window_end - window_start).days + 1
+                            if status == 429 and days > 30:
+                                midpoint = window_start + timedelta(days=days // 2 - 1)
+                                print(f"Open-Meteo limit: dividiendo {window_start} a {window_end}")
+                                return pd.concat(
+                                    [download_window(window_start, midpoint),
+                                     download_window(midpoint + timedelta(days=1), window_end)],
+                                    ignore_index=True,
+                                )
+                            if status is not None and status != 429 and status < 500:
+                                break
+                            if attempt + 1 < WEATHER_RETRY_ATTEMPTS:
+                                retry_after = (
+                                    exc.response.headers.get("Retry-After")
+                                    if exc.response is not None
+                                    else None
+                                )
                                 try:
-                                    retry_at = parsedate_to_datetime(retry_after)
-                                    delay = max(0, retry_at.timestamp() - time.time())
-                                except (TypeError, ValueError, OverflowError):
-                                    delay = 2**attempt
-                            time.sleep(min(max(delay, 1), 60))
-                if payload is None:
-                    raise RuntimeError(
-                        f"Open-Meteo grid request failed for {chunk_start} to {chunk_end}: "
-                        f"{last_error}"
-                    ) from None
-                if not isinstance(payload, list) or len(payload) != len(batch):
-                    raise ValueError("Open-Meteo multi-location response did not match the grid batch.")
-                chunk_frames = []
-                for (_, cell), location in zip(batch.iterrows(), payload, strict=True):
-                    if "daily" not in location or "time" not in location["daily"]:
-                        raise ValueError(f"Open-Meteo response missing daily values for {cell.cell_id}.")
-                    daily = location["daily"]
-                    frame = pd.DataFrame({"date": daily["time"], "cell_id": cell.cell_id})
-                    for column in WEATHER_COLUMNS:
-                        if column not in daily:
-                            raise ValueError(f"Open-Meteo response is missing {column}.")
-                        frame[column] = daily[column]
-                    chunk_frames.append(frame)
-                chunk_frame = pd.concat(chunk_frames, ignore_index=True)
+                                    delay = float(retry_after) if retry_after else 2**attempt
+                                except ValueError:
+                                    try:
+                                        retry_at = parsedate_to_datetime(retry_after)
+                                        delay = max(0, retry_at.timestamp() - time.time())
+                                    except (TypeError, ValueError, OverflowError):
+                                        delay = 2**attempt
+                                time.sleep(min(max(delay, 1), 60))
+                    if payload is None:
+                        status = last_error.response.status_code if last_error and last_error.response is not None else "network"
+                        raise RuntimeError(
+                            f"Open-Meteo grid request failed for {window_start} to {window_end} "
+                            f"(status {status})."
+                        ) from None
+                    if not isinstance(payload, list) or len(payload) != len(batch):
+                        raise ValueError("Open-Meteo multi-location response did not match the grid batch.")
+                    chunk_frames = []
+                    for (_, cell), location in zip(batch.iterrows(), payload, strict=True):
+                        if "daily" not in location or "time" not in location["daily"]:
+                            raise ValueError(f"Open-Meteo response missing daily values for {cell.cell_id}.")
+                        daily = location["daily"]
+                        frame = pd.DataFrame({"date": daily["time"], "cell_id": cell.cell_id})
+                        for column in WEATHER_COLUMNS:
+                            if column not in daily:
+                                raise ValueError(f"Open-Meteo response is missing {column}.")
+                            frame[column] = daily[column]
+                        chunk_frames.append(frame)
+                    return pd.concat(chunk_frames, ignore_index=True)
+
+                chunk_frame = download_window(chunk_start, chunk_end)
                 if cache_path is not None:
                     cache_path.parent.mkdir(parents=True, exist_ok=True)
                     temporary = cache_path.with_suffix(cache_path.suffix + ".tmp")
@@ -420,25 +436,33 @@ def fetch_weather_grid_history(
     ).sort_values(["cell_id", "date"]).reset_index(drop=True)
 
 
-def fetch_boundary_geojson(output: Path, timeout: int = 60) -> Path:
+def fetch_boundary_geojson(
+    output: Path,
+    state: str | None = "Madre de Dios",
+    country: str = "Peru",
+    timeout: int = 60,
+) -> Path:
     if output.exists():
         return output
+    params = {
+        "country": country,
+        "format": "geojson",
+        "polygon_geojson": 1,
+        "limit": 1,
+    }
+    if state:
+        params["state"] = state
     response = requests.get(
         "https://nominatim.openstreetmap.org/search",
-        params={
-            "state": "Madre de Dios",
-            "country": "Peru",
-            "format": "geojson",
-            "polygon_geojson": 1,
-            "limit": 1,
-        },
+        params=params,
         headers={"User-Agent": "wildfire-final-project/1.0"},
         timeout=timeout,
     )
     response.raise_for_status()
     payload = response.json()
     if len(payload.get("features", [])) != 1:
-        raise ValueError("Nominatim did not return exactly one Madre de Dios boundary.")
+        target = f"{state}, {country}" if state else country
+        raise ValueError(f"Nominatim did not return exactly one {target} boundary.")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload), encoding="utf-8")
     return output

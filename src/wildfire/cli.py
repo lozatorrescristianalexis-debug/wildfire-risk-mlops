@@ -7,11 +7,12 @@ from pathlib import Path
 
 import pandas as pd
 from shapely import covers, points
-from shapely.geometry import shape
+from shapely.geometry import box, mapping, shape
 
 from .config import ROOT, get_settings
 from .demo import save_demo_dataset
 from .features import create_grid, engineer_grid_daily
+from .geography import region_catalog, region_data
 from .ingest import (
     fetch_boundary_geojson,
     fetch_firms_history,
@@ -19,6 +20,7 @@ from .ingest import (
     save_dataset,
 )
 from .model import predict_latest, train_model
+from .scenarios import build_region_weather_profiles
 
 DATA_PATH = ROOT / "data" / "processed" / "real_daily.csv"
 DEMO_DATA_PATH = ROOT / "data" / "demo" / "daily.csv"
@@ -35,8 +37,12 @@ ALTERNATE_GAP_START = date(2026, 7, 1)
 ALTERNATE_GAP_END = date(2026, 8, 20)
 
 
-def ingest_data(firms_csv: Path | None = None) -> Path:
-    settings = get_settings()
+def ingest_data(
+    firms_csv: Path | None = None,
+    region: str | None = None,
+    boundary_file: Path | None = None,
+) -> Path:
+    settings = get_settings(region_override=region)
     if (settings.end_date - settings.start_date).days < 364:
         raise ValueError("Final data ingestion requires at least one year of dates.")
     raw_dir = ROOT / "data" / "raw"
@@ -150,9 +156,44 @@ def ingest_data(firms_csv: Path | None = None) -> Path:
         source_frames = [fires]
         source_coverage["local_firms_csv"] = _source_summary(fires)
 
-    boundary_path = fetch_boundary_geojson(raw_dir / "madre_de_dios_boundary.geojson")
+    if boundary_file is not None:
+        boundary_path = boundary_file
+    elif settings.region == "peru":
+        # Use the same fixed national geometry that powers the region selector.
+        boundary_path = raw_dir / "peru_local_boundary.geojson"
+        _, _, country = region_data()
+        boundary_path.write_text(
+            json.dumps({
+                "type": "FeatureCollection",
+                "features": [{
+                    "type": "Feature",
+                    "properties": {"name": "Perú"},
+                    "geometry": mapping(country),
+                }],
+            }),
+            encoding="utf-8",
+        )
+    else:
+        boundary_filename = f"{settings.region}_boundary.geojson"
+        boundary_path = fetch_boundary_geojson(
+            raw_dir / boundary_filename,
+            state=settings.region_state,
+            country=settings.region_country,
+            timeout=settings.request_timeout,
+        )
     boundary_data = json.loads(boundary_path.read_text(encoding="utf-8"))
     boundary = shape(boundary_data["features"][0]["geometry"])
+    regional_firms_detections = None
+    if settings.region == "peru":
+        _, regions, _ = region_data()
+        latitude = pd.to_numeric(fires["latitude"], errors="coerce")
+        longitude = pd.to_numeric(fires["longitude"], errors="coerce")
+        valid = latitude.notna() & longitude.notna()
+        fire_points = points(longitude.loc[valid].to_numpy(), latitude.loc[valid].to_numpy())
+        regional_firms_detections = {
+            region_id: int(covers(region["geometry"], fire_points).sum())
+            for region_id, region in regions.items()
+        }
     for source_frame in source_frames:
         source = source_frame["firms_source"].iloc[0]
         source_coverage[source].update(_source_summary(source_frame, boundary))
@@ -208,13 +249,63 @@ def ingest_data(firms_csv: Path | None = None) -> Path:
         settings.grid_cell_degrees,
         boundary_path,
     )
-    weather = fetch_weather_grid_history(
-        grid,
-        settings.start_date,
-        settings.end_date,
-        settings.request_timeout,
-        cache_dir=raw_dir,
-    )
+    if settings.region == "peru":
+        # Regional weather samples keep the national backfill within the public
+        # archive API's limits while retaining every grid cell and FIRMS event.
+        _, regions, _ = region_data()
+        regional_points = pd.DataFrame([
+            {"cell_id": region["id"],
+             "latitude": region["center"][0],
+             "longitude": region["center"][1]}
+            for region in region_catalog()[1:]
+        ])
+        regional_weather = fetch_weather_grid_history(
+            regional_points,
+            settings.start_date,
+            settings.end_date,
+            settings.request_timeout,
+            batch_size=len(regional_points),
+            chunk_days=(settings.end_date - settings.start_date).days + 1,
+            cache_dir=raw_dir,
+        )
+        profile_path = ROOT / "web" / "region_weather.json"
+        profile_path.write_text(
+            json.dumps(build_region_weather_profiles(regional_weather), indent=2) + "\n",
+            encoding="utf-8",
+        )
+        regional_weather = regional_weather.rename(columns={"cell_id": "weather_region"})
+        assignments = []
+        for cell in grid.itertuples():
+            cell_geometry = box(
+                cell.bbox_west + cell.grid_column * cell.cell_degrees,
+                cell.bbox_south + cell.grid_row * cell.cell_degrees,
+                cell.bbox_west + (cell.grid_column + 1) * cell.cell_degrees,
+                cell.bbox_south + (cell.grid_row + 1) * cell.cell_degrees,
+            )
+            weather_region = max(
+                regions,
+                key=lambda region_id: regions[region_id]["geometry"].intersection(cell_geometry).area,
+            )
+            assignments.append({"cell_id": cell.cell_id, "weather_region": weather_region})
+        weather = regional_weather.merge(
+            pd.DataFrame(assignments), on="weather_region", how="inner", validate="many_to_many"
+        ).drop(columns="weather_region")
+        weather_sampling = (
+            "One Open-Meteo historical series at a representative point per administrative "
+            "region (25 sites); each 0.5-degree cell inherits the series of the region "
+            "with the greatest overlap. Local weather variation within a region is not resolved."
+        )
+    else:
+        weather = fetch_weather_grid_history(
+            grid,
+            settings.start_date,
+            settings.end_date,
+            settings.request_timeout,
+            batch_size=settings.weather_batch_size,
+            chunk_days=settings.weather_chunk_days,
+            cache_dir=raw_dir,
+        )
+        weather_sampling = "Open-Meteo historical series at each grid-cell center."
     weather_path = ROOT / "data" / "raw" / "open_meteo_daily.csv"
     weather.to_csv(weather_path, index=False)
     dataset, feature_stats = engineer_grid_daily(
@@ -235,6 +326,10 @@ def ingest_data(firms_csv: Path | None = None) -> Path:
             {
                 "requested_start_date": settings.start_date.isoformat(),
                 "requested_end_date": settings.end_date.isoformat(),
+                "region": settings.region,
+                "area": settings.area,
+                "weather_sampling": weather_sampling,
+                "regional_firms_detections": regional_firms_detections,
                 "firms_sources": source_coverage,
                 "source_sensor_note": (
                     "SNPP labels are supplemented with separately attributed "
@@ -296,22 +391,40 @@ def _source_summary(frame: pd.DataFrame, boundary=None) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Madre de Dios FIRMS/Open-Meteo pipeline")
+    parser = argparse.ArgumentParser(description="Wildfire risk FIRMS/Open-Meteo pipeline")
     commands = parser.add_subparsers(dest="command", required=True)
     data = commands.add_parser("data", help="Fetch FIRMS and Open-Meteo data")
     data.add_argument("--firms-csv", type=Path, help="Use a locally downloaded FIRMS CSV instead of the API")
+    data.add_argument(
+        "--region",
+        choices=["madre_de_dios", "peru"],
+        default=None,
+        help="Target geographic region (default: from .env or madre_de_dios)",
+    )
+    data.add_argument(
+        "--boundary",
+        type=Path,
+        default=None,
+        help="Path to custom GeoJSON boundary file",
+    )
     demo = commands.add_parser("data-demo", help="Create a deterministic synthetic training dataset")
     demo.add_argument("--days", type=int, default=1095)
     demo.add_argument("--seed", type=int, default=42)
     train = commands.add_parser("train", help="Train model and save holdout metrics")
     train.add_argument("--input", type=Path, default=DATA_PATH)
     train.add_argument("--trials", type=int, default=10, help="Optuna trials per model")
+    train.add_argument("--region", choices=["madre_de_dios", "peru"], default=None,
+                       help="Geographic scope of the ingested training dataset")
     predict = commands.add_parser("run", help="Score the latest row in the dataset")
     predict.add_argument("--input", type=Path, default=DATA_PATH)
     predict.add_argument("--model", type=Path, default=MODEL_PATH)
     args = parser.parse_args()
     if args.command == "data":
-        path = ingest_data(args.firms_csv)
+        path = ingest_data(
+            firms_csv=args.firms_csv,
+            region=args.region,
+            boundary_file=args.boundary,
+        )
         frame = pd.read_csv(path)
         print(
             json.dumps(
@@ -333,9 +446,26 @@ def main() -> None:
         frame = save_demo_dataset(DEMO_DATA_PATH, days=args.days, seed=args.seed)
         print(f"Saved {len(frame)} synthetic rows ({int(frame['label'].sum())} positive): {DEMO_DATA_PATH}")
     elif args.command == "train":
+        training_region = args.region
+        weather_sampling = None
+        ingestion_report = ROOT / "reports" / "real_ingestion.json"
+        if args.input.resolve() == DATA_PATH.resolve() and ingestion_report.exists():
+            ingestion_metadata = json.loads(ingestion_report.read_text(encoding="utf-8"))
+            ingested_region = ingestion_metadata.get("region")
+            weather_sampling = ingestion_metadata.get("weather_sampling")
+            if ingested_region in {"madre_de_dios", "peru"}:
+                if training_region and training_region != ingested_region:
+                    raise ValueError(
+                        f"Training region {training_region} disagrees with ingested dataset region {ingested_region}."
+                    )
+                training_region = ingested_region
+        training_region = training_region or get_settings().region
         print(
             json.dumps(
-                train_model(args.input, MODEL_PATH, METRICS_PATH, n_trials=args.trials),
+                train_model(args.input, MODEL_PATH, METRICS_PATH,
+                            n_trials=args.trials,
+                            training_region=training_region,
+                            weather_sampling=weather_sampling),
                 indent=2,
             )
         )

@@ -2,8 +2,8 @@
   "requested_start_date": "2026-07-01",
   "requested_end_date": "2026-08-20",
   "requested_days_inclusive": 51,
-  "days_with_at_least_one_in_boundary_detection": 40,
-  "days_without_returned_in_boundary_detections": 11,
+  "days_with_at_least_one_in_boundary_detection": 51,
+  "days_without_returned_in_boundary_detections": 0,
   "sources": {
     "VIIRS_NOAA20_SP": {
       "detections": 0,
@@ -13,48 +13,48 @@
       "requested_end_date": "2026-08-20"
     },
     "VIIRS_NOAA20_NRT": {
-      "detections": 600,
-      "first_detection": "2026-07-01",
-      "last_detection": "2026-08-18",
-      "requested_start_date": "2026-07-01",
-      "requested_end_date": "2026-08-20",
-      "detections_in_administrative_boundary": 288,
-      "active_dates_in_administrative_boundary": 32,
-      "first_boundary_detection": "2026-07-03",
-      "last_boundary_detection": "2026-08-17"
-    },
-    "VIIRS_NOAA21_NRT": {
-      "detections": 552,
+      "detections": 13419,
       "first_detection": "2026-07-01",
       "last_detection": "2026-08-20",
       "requested_start_date": "2026-07-01",
       "requested_end_date": "2026-08-20",
-      "detections_in_administrative_boundary": 246,
-      "active_dates_in_administrative_boundary": 35,
+      "detections_in_administrative_boundary": 10625,
+      "active_dates_in_administrative_boundary": 51,
+      "first_boundary_detection": "2026-07-01",
+      "last_boundary_detection": "2026-08-20"
+    },
+    "VIIRS_NOAA21_NRT": {
+      "detections": 13014,
+      "first_detection": "2026-07-01",
+      "last_detection": "2026-08-20",
+      "requested_start_date": "2026-07-01",
+      "requested_end_date": "2026-08-20",
+      "detections_in_administrative_boundary": 10361,
+      "active_dates_in_administrative_boundary": 51,
       "first_boundary_detection": "2026-07-01",
       "last_boundary_detection": "2026-08-20"
     },
     "MODIS_SP": {
-      "detections": 36,
-      "first_detection": "2026-07-02",
+      "detections": 795,
+      "first_detection": "2026-07-01",
       "last_detection": "2026-07-31",
       "requested_start_date": "2026-07-01",
       "requested_end_date": "2026-08-20",
-      "detections_in_administrative_boundary": 18,
-      "active_dates_in_administrative_boundary": 12,
-      "first_boundary_detection": "2026-07-02",
+      "detections_in_administrative_boundary": 643,
+      "active_dates_in_administrative_boundary": 31,
+      "first_boundary_detection": "2026-07-01",
       "last_boundary_detection": "2026-07-31"
     },
     "MODIS_NRT": {
-      "detections": 37,
+      "detections": 1056,
       "first_detection": "2026-08-01",
-      "last_detection": "2026-08-17",
+      "last_detection": "2026-08-20",
       "requested_start_date": "2026-07-01",
       "requested_end_date": "2026-08-20",
-      "detections_in_administrative_boundary": 17,
-      "active_dates_in_administrative_boundary": 5,
-      "first_boundary_detection": "2026-08-06",
-      "last_boundary_detection": "2026-08-15"
+      "detections_in_administrative_boundary": 804,
+      "active_dates_in_administrative_boundary": 20,
+      "first_boundary_detection": "2026-08-01",
+      "last_boundary_detection": "2026-08-20"
     }
   },
   "note": "Products remain separately attributed; a day without a returned detection is not evidence of no fire or satellite coverage."

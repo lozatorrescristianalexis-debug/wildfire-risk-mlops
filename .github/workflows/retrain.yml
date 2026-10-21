@@ -46,10 +46,13 @@ jobs:
           cp fresh-data/data/processed/real_daily.csv data/processed/real_daily.csv
           cp fresh-data/reports/real_ingestion.json reports/real_ingestion.json
           cp fresh-data/reports/firms_gap_alternative_sources.json reports/firms_gap_alternative_sources.json
+          cp fresh-data/web/region_weather.json web/region_weather.json
       - name: Save current model validation score
         run: cp reports/real_metrics.json "$RUNNER_TEMP/baseline_metrics.json"
       - name: Train on refreshed real data
-        run: python -m src.wildfire.cli train --trials 10
+        run: python -m src.wildfire.cli train --region peru --trials 5
+      - name: Refresh real holdout examples
+        run: python -m scripts.generate_holdout_examples
       - name: Compare temporal validation F1
         id: compare
         run: |
@@ -62,7 +65,7 @@ jobs:
           new = json.loads(Path("reports/real_metrics.json").read_text())
           old_f1 = old["models"][old["selected_model"]]["validation_f1_at_selected_threshold"]
           new_f1 = new["models"][new["selected_model"]]["validation_f1_at_selected_threshold"]
-          promote = new_f1 > old_f1
+          promote = old.get("training_region") != new.get("training_region") or new_f1 > old_f1
           print(f"Current temporal validation F1: {old_f1:.6f}")
           print(f"Candidate temporal validation F1: {new_f1:.6f}")
           print(f"Promote candidate: {'yes' if promote else 'no'}")
@@ -74,9 +77,16 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/processed/real_daily.csv models/wildfire_real.joblib reports/real_metrics.json reports/real_ingestion.json reports/firms_gap_alternative_sources.json
+          git add models/wildfire_real.joblib reports/real_metrics.json reports/real_ingestion.json reports/firms_gap_alternative_sources.json reports/figures web/real_examples.json web/region_weather.json
           git commit -m "chore: promote improved real wildfire model" -m "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
           git push origin main
       - name: Keep current model when validation does not improve
         if: ${{ steps.compare.outputs.promote != 'true' }}
-        run: echo "Candidate was not promoted; current model and tracked artifacts remain unchanged."
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/region_weather.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: refresh regional historical weather profiles"
+            git push origin main
+          fi

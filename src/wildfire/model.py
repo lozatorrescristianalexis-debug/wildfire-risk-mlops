@@ -17,6 +17,7 @@ from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
+    brier_score_loss,
     confusion_matrix,
     f1_score,
     precision_recall_curve,
@@ -31,6 +32,7 @@ from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
 
 from .features import GRID_FEATURES
+from .geography import region_at, region_catalog
 
 REQUIRED_COLUMNS = [
     "date",
@@ -41,6 +43,23 @@ REQUIRED_COLUMNS = [
     *GRID_FEATURES,
 ]
 MODEL_NAMES = ("logistic", "random_forest", "hist_gradient_boosting", "xgboost")
+
+
+class CalibratedHotspotModel:
+    """Apply temporal out-of-fold Platt calibration to a fitted classifier."""
+
+    def __init__(self, base_model, calibrator):
+        self.base_model = base_model
+        self.calibrator = calibrator
+        self.classes_ = np.array([0, 1])
+
+    def predict_proba(self, features):
+        raw = self.base_model.predict_proba(features)[:, 1]
+        positive = self.calibrator.predict_proba(raw.reshape(-1, 1))[:, 1]
+        return np.column_stack((1 - positive, positive))
+
+    def predict(self, features):
+        return (self.predict_proba(features)[:, 1] >= 0.5).astype(int)
 
 
 def load_training_data(path: Path, *, allow_demo: bool = False) -> pd.DataFrame:
@@ -225,9 +244,38 @@ def _evaluate(labels: np.ndarray, probabilities: np.ndarray, threshold: float) -
         "recall": float(recall_score(labels, predictions, zero_division=0)),
         "roc_auc": float(roc_auc_score(labels, probabilities)),
         "pr_auc": float(average_precision_score(labels, probabilities)),
+        "brier_score": float(brier_score_loss(labels, probabilities)),
         "threshold": float(threshold),
         "confusion_matrix": confusion_matrix(labels, predictions, labels=[0, 1]).tolist(),
     }
+
+
+def _regional_holdout(test: pd.DataFrame, probabilities: np.ndarray, threshold: float) -> dict:
+    """Report geographic subsets of the untouched temporal holdout by cell center."""
+    centers = test[["cell_id", "latitude", "longitude"]].drop_duplicates("cell_id")
+    cell_regions = {
+        row.cell_id: region_at(float(row.latitude), float(row.longitude))
+        for row in centers.itertuples()
+    }
+    labels = test["label"].to_numpy(dtype=int)
+    region_ids = test["cell_id"].map(cell_regions).to_numpy()
+    summary = {}
+    for region in region_catalog()[1:]:
+        mask = region_ids == region["id"]
+        regional_labels = labels[mask]
+        result = {
+            "name": region["name"],
+            "test_rows": int(mask.sum()),
+            "positive_rows": int(regional_labels.sum()),
+            "negative_rows": int(len(regional_labels) - regional_labels.sum()),
+            "grid_cells": int(test.loc[mask, "cell_id"].nunique()),
+        }
+        if len(regional_labels) and len(np.unique(regional_labels)) == 2:
+            result["metrics"] = _evaluate(regional_labels, probabilities[mask], threshold)
+        else:
+            result["metrics"] = None
+        summary[region["id"]] = result
+    return summary
 
 
 def _save_figures(
@@ -319,8 +367,10 @@ def _save_figures(
     sample_size = min(5000, len(train_x))
     sample_x = train_x.sample(sample_size, random_state=42)
     sample_y = train_y.loc[sample_x.index]
+    # Platt calibration is monotonic, so average-precision importance has the
+    # same ranking and score when evaluated on the fitted base classifier.
     importance = permutation_importance(
-        best_model,
+        best_model.base_model,
         sample_x,
         sample_y,
         n_repeats=3,
@@ -383,10 +433,26 @@ def train_model(
     allow_demo: bool = False,
     n_trials: int = 10,
     figures_dir: Path | None = None,
+    training_region: str | None = None,
+    weather_sampling: str | None = None,
+    model_names: tuple[str, ...] | None = None,
 ) -> dict:
     frame = load_training_data(input_path, allow_demo=allow_demo)
     if allow_demo:
         return _train_demo_for_tests(frame, model_path, metrics_path)
+    if training_region not in {"madre_de_dios", "peru"}:
+        raise ValueError("Real training requires training_region='madre_de_dios' or 'peru'.")
+    if training_region == "peru" and (
+        frame["latitude"].max() - frame["latitude"].min() < 12
+        or frame["longitude"].max() - frame["longitude"].min() < 8
+    ):
+        raise ValueError("A Peru model requires training cells across the national extent.")
+    model_names = model_names or (
+        ("logistic", "hist_gradient_boosting", "xgboost")
+        if training_region == "peru" else MODEL_NAMES
+    )
+    if not model_names or any(name not in MODEL_NAMES for name in model_names):
+        raise ValueError("Training model_names must contain supported estimators.")
     unique_dates = np.array(sorted(frame["date"].unique()))
     if len(unique_dates) < 60 or (unique_dates[-1] - unique_dates[0]).days < 364:
         raise ValueError("Final training requires at least one year and 60 active dates of real data.")
@@ -405,7 +471,7 @@ def train_model(
     results = {}
     fitted_models = {}
 
-    for name in MODEL_NAMES:
+    for name in model_names:
         def objective(trial: optuna.Trial) -> float:
             params = _suggest_params(trial, name)
             fold_scores = []
@@ -435,13 +501,24 @@ def train_model(
                 train_x.iloc[validation_index]
             )[:, 1]
         valid_oof = np.isfinite(oof_probabilities)
-        threshold, validation_f1 = _choose_threshold(
+        calibrator = LogisticRegression(max_iter=1000, solver="lbfgs")
+        calibrator.fit(
+            oof_probabilities[valid_oof].reshape(-1, 1),
             train_y.to_numpy()[valid_oof],
-            oof_probabilities[valid_oof],
+        )
+        if calibrator.coef_[0, 0] <= 0:
+            raise ValueError(f"Temporal calibration inverted model ranking for {name}.")
+        calibrated_oof = calibrator.predict_proba(
+            oof_probabilities[valid_oof].reshape(-1, 1)
+        )[:, 1]
+        threshold, validation_f1 = _choose_threshold(
+            train_y.to_numpy()[valid_oof], calibrated_oof,
         )
         final_estimator = _make_estimator(name, best_params, _positive_weight(train_y))
         final_estimator.fit(train_x, train_y)
-        test_probabilities = final_estimator.predict_proba(test_x)[:, 1]
+        raw_test_probabilities = final_estimator.predict_proba(test_x)[:, 1]
+        calibrated_estimator = CalibratedHotspotModel(final_estimator, calibrator)
+        test_probabilities = calibrated_estimator.predict_proba(test_x)[:, 1]
         results[name] = {
             "best_params": best_params,
             "trials": int(n_trials),
@@ -449,9 +526,10 @@ def train_model(
             "validation_f1_at_selected_threshold": validation_f1,
             "selected_threshold_from_temporal_oof": threshold,
             "test": _evaluate(test_y.to_numpy(), test_probabilities, threshold),
+            "raw_test_brier_score": float(brier_score_loss(test_y, raw_test_probabilities)),
             "test_probabilities": test_probabilities,
         }
-        fitted_models[name] = final_estimator
+        fitted_models[name] = calibrated_estimator
         print(
             f"{name}: best temporal CV PR-AUC={study.best_value:.4f}; "
             f"holdout F1={results[name]['test']['f1']:.4f}"
@@ -488,6 +566,8 @@ def train_model(
     metrics = {
         "task": "spatiotemporal grid-cell FIRMS hotspot classification; not a fire forecast",
         "data_source": "firms_open_meteo",
+        "training_region": training_region,
+        "weather_sampling": weather_sampling,
         "dataset": str(input_path),
         "rows": int(len(frame)),
         "date_start": frame["date"].min().date().isoformat(),
@@ -510,6 +590,12 @@ def train_model(
             "trials_per_model": n_trials,
             "model_selection": "best temporal OOF F1, tie-broken by CV average precision; test set not used",
         },
+        "calibration": (
+            "Platt logistic calibration fitted on temporal out-of-fold training predictions; "
+            "the holdout is used only for evaluation. Reported probabilities estimate the "
+            "chance of a recorded FIRMS detection under this dataset's sampling scheme, "
+            "not the physical chance that a cell will burn."
+        ),
         "negative_definition": (
             "No cell-level FIRMS detection on a day when at least one detection occurred "
             "somewhere in the region. This is a satellite-activity proxy, not verified "
@@ -518,6 +604,16 @@ def train_model(
         "selected_model": best_name,
         "selected_threshold": best_result["selected_threshold_from_temporal_oof"],
         "test_metrics": best_result["test"],
+        "regional_test_metrics": _regional_holdout(
+            test,
+            best_result["test_probabilities"],
+            best_result["selected_threshold_from_temporal_oof"],
+        ) if training_region == "peru" else None,
+        "regional_assignment": (
+            "Each holdout grid cell is assigned by its center coordinate; border cells whose "
+            "centers fall outside Peru are excluded from regional subsets. Regional scores "
+            "use the single national threshold and are descriptive, not independently tuned."
+        ) if training_region == "peru" else None,
         "models": serializable_results,
         "features": GRID_FEATURES,
         "figures": [path.name for path in sorted(figures_dir.glob("*_real.png"))],
@@ -531,6 +627,7 @@ def train_model(
             "threshold": metrics["selected_threshold"],
             "selected_model": best_name,
             "data_source": "firms_open_meteo",
+            "training_region": training_region,
         },
         model_path,
     )

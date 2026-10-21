@@ -27,6 +27,28 @@ LAG_FEATURES = [
 GRID_FEATURES = [*LAG_FEATURES, "latitude", "longitude"]
 
 
+def add_lagged_weather(frame: pd.DataFrame) -> pd.DataFrame:
+    """Use the same past-only weather features for training and map scenarios."""
+    data = frame.sort_values(["cell_id", "date"]).reset_index(drop=True).copy()
+    grouped = data.groupby("cell_id", sort=False)
+    for column in WEATHER_COLUMNS:
+        data[f"{column}_lag1"] = grouped[column].shift(1)
+    for column, window in (
+        ("temperature_2m_max", 3),
+        ("temperature_2m_max", 7),
+        ("relative_humidity_2m_mean", 7),
+        ("wind_speed_10m_max", 7),
+    ):
+        data[f"{column}_mean_{window}d"] = grouped[column].transform(
+            lambda values: values.shift(1).rolling(window, min_periods=window).mean()
+        )
+    for window in (3, 7, 30):
+        data[f"precipitation_sum_sum_{window}d"] = grouped["precipitation_sum"].transform(
+            lambda values: values.shift(1).rolling(window, min_periods=window).sum()
+        )
+    return data
+
+
 def create_grid(area: str, cell_degrees: float, boundary_path: Path) -> pd.DataFrame:
     if cell_degrees <= 0:
         raise ValueError("GRID_CELL_DEGREES must be greater than zero.")
@@ -43,29 +65,31 @@ def create_grid(area: str, cell_degrees: float, boundary_path: Path) -> pd.DataF
     else:
         polygon = shape(boundary_data)
     if polygon.is_empty or not polygon.is_valid:
-        raise ValueError("Madre de Dios boundary geometry is empty or invalid.")
+        raise ValueError("Administrative boundary geometry is empty or invalid.")
 
     columns = math.ceil((east - west) / cell_degrees)
     rows = math.ceil((north - south) / cell_degrees)
     cells = []
     for row in range(rows):
-        latitude = south + (row + 0.5) * cell_degrees
         for column in range(columns):
-            longitude = west + (column + 0.5) * cell_degrees
             cell = box(
                 west + column * cell_degrees,
                 south + row * cell_degrees,
                 min(west + (column + 1) * cell_degrees, east),
                 min(south + (row + 1) * cell_degrees, north),
             )
-            if polygon.intersection(cell).area > 0:
+            covered_part = polygon.intersection(cell)
+            if covered_part.area > 0:
+                sample_point = cell.centroid
+                if not polygon.covers(sample_point):
+                    sample_point = covered_part.representative_point()
                 cells.append(
                     {
                         "cell_id": f"r{row:03d}_c{column:03d}",
                         "grid_row": row,
                         "grid_column": column,
-                        "latitude": latitude,
-                        "longitude": longitude,
+                        "latitude": sample_point.y,
+                        "longitude": sample_point.x,
                         "cell_degrees": cell_degrees,
                         "bbox_west": west,
                         "bbox_south": south,
@@ -154,26 +178,7 @@ def engineer_grid_daily(
     data["fire_count"] = data["fire_count"].fillna(0).astype("int64")
     data["firms_sources"] = data["firms_sources"].fillna("none")
     data["label"] = data["fire_count"].gt(0).astype("int64")
-    data = data.sort_values(["cell_id", "date"]).reset_index(drop=True)
-    grouped = data.groupby("cell_id", sort=False)
-    for column in WEATHER_COLUMNS:
-        previous = grouped[column].shift(1)
-        data[f"{column}_lag1"] = previous
-    for column, window in (
-        ("temperature_2m_max", 3),
-        ("temperature_2m_max", 7),
-        ("relative_humidity_2m_mean", 7),
-        ("wind_speed_10m_max", 7),
-    ):
-        data[f"{column}_mean_{window}d"] = (
-            data.groupby("cell_id", sort=False)[column]
-            .transform(lambda values: values.shift(1).rolling(window, min_periods=window).mean())
-        )
-    for window in (3, 7, 30):
-        data[f"precipitation_sum_sum_{window}d"] = (
-            data.groupby("cell_id", sort=False)["precipitation_sum"]
-            .transform(lambda values: values.shift(1).rolling(window, min_periods=window).sum())
-        )
+    data = add_lagged_weather(data)
 
     daily_detection_counts = data.groupby("date")["fire_count"].sum()
     date_activity = data["date"].map(daily_detection_counts)

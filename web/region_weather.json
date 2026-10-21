@@ -1,0 +1,1212 @@
+{
+  "observed_date": "2026-10-10",
+  "description": "Historical Open-Meteo weather at 25 regional representative points. Dry and wet profiles use observed dates near each region's 90th and 10th dryness percentile; regions may use different dates. These are not forecasts.",
+  "profiles": {
+    "observed": {
+      "amazonas": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 27.9,
+          "relative_humidity_2m_mean_lag1": 88.0,
+          "precipitation_sum_lag1": 10.1,
+          "wind_speed_10m_max_lag1": 7.9,
+          "temperature_2m_max_mean_3d": 28.0667,
+          "temperature_2m_max_mean_7d": 28.5714,
+          "relative_humidity_2m_mean_mean_7d": 80.2857,
+          "wind_speed_10m_max_mean_7d": 9.2143,
+          "precipitation_sum_sum_3d": 38.7,
+          "precipitation_sum_sum_7d": 61.0,
+          "precipitation_sum_sum_30d": 320.9
+        }
+      },
+      "ancash": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 13.0,
+          "relative_humidity_2m_mean_lag1": 68.0,
+          "precipitation_sum_lag1": 0.3,
+          "wind_speed_10m_max_lag1": 15.8,
+          "temperature_2m_max_mean_3d": 12.4,
+          "temperature_2m_max_mean_7d": 12.8714,
+          "relative_humidity_2m_mean_mean_7d": 62.2857,
+          "wind_speed_10m_max_mean_7d": 13.0143,
+          "precipitation_sum_sum_3d": 7.3,
+          "precipitation_sum_sum_7d": 9.2,
+          "precipitation_sum_sum_30d": 52.4
+        }
+      },
+      "apurimac": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 12.3,
+          "relative_humidity_2m_mean_lag1": 53.0,
+          "precipitation_sum_lag1": 0.4,
+          "wind_speed_10m_max_lag1": 10.8,
+          "temperature_2m_max_mean_3d": 13.1667,
+          "temperature_2m_max_mean_7d": 13.7429,
+          "relative_humidity_2m_mean_mean_7d": 39.7143,
+          "wind_speed_10m_max_mean_7d": 11.6143,
+          "precipitation_sum_sum_3d": 0.8,
+          "precipitation_sum_sum_7d": 0.8,
+          "precipitation_sum_sum_30d": 39.0
+        }
+      },
+      "arequipa": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 24.2,
+          "relative_humidity_2m_mean_lag1": 44.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 9.8,
+          "temperature_2m_max_mean_3d": 24.9,
+          "temperature_2m_max_mean_7d": 24.1286,
+          "relative_humidity_2m_mean_mean_7d": 43.0,
+          "wind_speed_10m_max_mean_7d": 9.8,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 0.0
+        }
+      },
+      "ayacucho": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 18.1,
+          "relative_humidity_2m_mean_lag1": 23.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 22.9,
+          "temperature_2m_max_mean_3d": 18.7,
+          "temperature_2m_max_mean_7d": 19.2857,
+          "relative_humidity_2m_mean_mean_7d": 26.8571,
+          "wind_speed_10m_max_mean_7d": 23.6429,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 29.9
+        }
+      },
+      "cajamarca": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 29.5,
+          "relative_humidity_2m_mean_lag1": 71.0,
+          "precipitation_sum_lag1": 3.0,
+          "wind_speed_10m_max_lag1": 9.6,
+          "temperature_2m_max_mean_3d": 31.5667,
+          "temperature_2m_max_mean_7d": 31.4714,
+          "relative_humidity_2m_mean_mean_7d": 63.0,
+          "wind_speed_10m_max_mean_7d": 9.2286,
+          "precipitation_sum_sum_3d": 4.7,
+          "precipitation_sum_sum_7d": 7.1,
+          "precipitation_sum_sum_30d": 35.6
+        }
+      },
+      "callao": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 27.2,
+          "relative_humidity_2m_mean_lag1": 71.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 17.1,
+          "temperature_2m_max_mean_3d": 26.4,
+          "temperature_2m_max_mean_7d": 26.6714,
+          "relative_humidity_2m_mean_mean_7d": 74.2857,
+          "wind_speed_10m_max_mean_7d": 16.1429,
+          "precipitation_sum_sum_3d": 0.1,
+          "precipitation_sum_sum_7d": 0.1,
+          "precipitation_sum_sum_30d": 3.3
+        }
+      },
+      "cusco": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 11.8,
+          "relative_humidity_2m_mean_lag1": 73.0,
+          "precipitation_sum_lag1": 0.7,
+          "wind_speed_10m_max_lag1": 9.3,
+          "temperature_2m_max_mean_3d": 11.9333,
+          "temperature_2m_max_mean_7d": 13.0,
+          "relative_humidity_2m_mean_mean_7d": 68.2857,
+          "wind_speed_10m_max_mean_7d": 10.3571,
+          "precipitation_sum_sum_3d": 4.3,
+          "precipitation_sum_sum_7d": 5.0,
+          "precipitation_sum_sum_30d": 56.1
+        }
+      },
+      "huancavelica": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 12.3,
+          "relative_humidity_2m_mean_lag1": 31.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 14.8,
+          "temperature_2m_max_mean_3d": 12.4667,
+          "temperature_2m_max_mean_7d": 12.5286,
+          "relative_humidity_2m_mean_mean_7d": 30.0,
+          "wind_speed_10m_max_mean_7d": 18.8857,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 41.9
+        }
+      },
+      "huanuco": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 12.2,
+          "relative_humidity_2m_mean_lag1": 91.0,
+          "precipitation_sum_lag1": 21.7,
+          "wind_speed_10m_max_lag1": 7.2,
+          "temperature_2m_max_mean_3d": 12.1667,
+          "temperature_2m_max_mean_7d": 12.0,
+          "relative_humidity_2m_mean_mean_7d": 91.1429,
+          "wind_speed_10m_max_mean_7d": 6.4143,
+          "precipitation_sum_sum_3d": 45.9,
+          "precipitation_sum_sum_7d": 90.9,
+          "precipitation_sum_sum_30d": 337.0
+        }
+      },
+      "ica": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 33.2,
+          "relative_humidity_2m_mean_lag1": 71.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 26.3,
+          "temperature_2m_max_mean_3d": 31.7,
+          "temperature_2m_max_mean_7d": 32.1286,
+          "relative_humidity_2m_mean_mean_7d": 67.2857,
+          "wind_speed_10m_max_mean_7d": 21.2286,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 3.2
+        }
+      },
+      "junin": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 12.6,
+          "relative_humidity_2m_mean_lag1": 74.0,
+          "precipitation_sum_lag1": 1.5,
+          "wind_speed_10m_max_lag1": 8.7,
+          "temperature_2m_max_mean_3d": 12.9,
+          "temperature_2m_max_mean_7d": 13.9286,
+          "relative_humidity_2m_mean_mean_7d": 70.0,
+          "wind_speed_10m_max_mean_7d": 10.3571,
+          "precipitation_sum_sum_3d": 4.2,
+          "precipitation_sum_sum_7d": 6.3,
+          "precipitation_sum_sum_30d": 88.5
+        }
+      },
+      "la_libertad": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 16.6,
+          "relative_humidity_2m_mean_lag1": 77.0,
+          "precipitation_sum_lag1": 2.2,
+          "wind_speed_10m_max_lag1": 12.2,
+          "temperature_2m_max_mean_3d": 15.7333,
+          "temperature_2m_max_mean_7d": 16.2143,
+          "relative_humidity_2m_mean_mean_7d": 74.0,
+          "wind_speed_10m_max_mean_7d": 12.6286,
+          "precipitation_sum_sum_3d": 16.2,
+          "precipitation_sum_sum_7d": 34.9,
+          "precipitation_sum_sum_30d": 126.9
+        }
+      },
+      "lambayeque": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 30.5,
+          "relative_humidity_2m_mean_lag1": 76.0,
+          "precipitation_sum_lag1": 6.0,
+          "wind_speed_10m_max_lag1": 31.7,
+          "temperature_2m_max_mean_3d": 29.6667,
+          "temperature_2m_max_mean_7d": 31.1429,
+          "relative_humidity_2m_mean_mean_7d": 72.5714,
+          "wind_speed_10m_max_mean_7d": 29.1286,
+          "precipitation_sum_sum_3d": 6.5,
+          "precipitation_sum_sum_7d": 6.6,
+          "precipitation_sum_sum_30d": 9.6
+        }
+      },
+      "lima": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 17.6,
+          "relative_humidity_2m_mean_lag1": 67.0,
+          "precipitation_sum_lag1": 2.1,
+          "wind_speed_10m_max_lag1": 10.2,
+          "temperature_2m_max_mean_3d": 17.8333,
+          "temperature_2m_max_mean_7d": 17.7286,
+          "relative_humidity_2m_mean_mean_7d": 70.2857,
+          "wind_speed_10m_max_mean_7d": 10.3714,
+          "precipitation_sum_sum_3d": 2.4,
+          "precipitation_sum_sum_7d": 6.6,
+          "precipitation_sum_sum_30d": 43.4
+        }
+      },
+      "loreto": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 30.5,
+          "relative_humidity_2m_mean_lag1": 92.0,
+          "precipitation_sum_lag1": 12.4,
+          "wind_speed_10m_max_lag1": 10.2,
+          "temperature_2m_max_mean_3d": 31.9,
+          "temperature_2m_max_mean_7d": 32.1571,
+          "relative_humidity_2m_mean_mean_7d": 84.8571,
+          "wind_speed_10m_max_mean_7d": 9.6429,
+          "precipitation_sum_sum_3d": 24.7,
+          "precipitation_sum_sum_7d": 32.3,
+          "precipitation_sum_sum_30d": 160.8
+        }
+      },
+      "madre_de_dios": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 31.9,
+          "relative_humidity_2m_mean_lag1": 79.0,
+          "precipitation_sum_lag1": 0.3,
+          "wind_speed_10m_max_lag1": 10.7,
+          "temperature_2m_max_mean_3d": 32.8,
+          "temperature_2m_max_mean_7d": 32.3571,
+          "relative_humidity_2m_mean_mean_7d": 74.7143,
+          "wind_speed_10m_max_mean_7d": 14.8714,
+          "precipitation_sum_sum_3d": 2.0,
+          "precipitation_sum_sum_7d": 8.0,
+          "precipitation_sum_sum_30d": 46.9
+        }
+      },
+      "moquegua": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 22.8,
+          "relative_humidity_2m_mean_lag1": 32.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 16.4,
+          "temperature_2m_max_mean_3d": 22.4333,
+          "temperature_2m_max_mean_7d": 22.2714,
+          "relative_humidity_2m_mean_mean_7d": 30.4286,
+          "wind_speed_10m_max_mean_7d": 15.3714,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 2.2
+        }
+      },
+      "pasco": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 28.5,
+          "relative_humidity_2m_mean_lag1": 87.0,
+          "precipitation_sum_lag1": 19.3,
+          "wind_speed_10m_max_lag1": 7.6,
+          "temperature_2m_max_mean_3d": 28.8,
+          "temperature_2m_max_mean_7d": 28.7286,
+          "relative_humidity_2m_mean_mean_7d": 84.4286,
+          "wind_speed_10m_max_mean_7d": 6.8286,
+          "precipitation_sum_sum_3d": 35.3,
+          "precipitation_sum_sum_7d": 59.1,
+          "precipitation_sum_sum_30d": 245.2
+        }
+      },
+      "piura": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 33.7,
+          "relative_humidity_2m_mean_lag1": 65.0,
+          "precipitation_sum_lag1": 0.4,
+          "wind_speed_10m_max_lag1": 24.1,
+          "temperature_2m_max_mean_3d": 31.9333,
+          "temperature_2m_max_mean_7d": 32.8,
+          "relative_humidity_2m_mean_mean_7d": 67.7143,
+          "wind_speed_10m_max_mean_7d": 23.2286,
+          "precipitation_sum_sum_3d": 0.6,
+          "precipitation_sum_sum_7d": 3.6,
+          "precipitation_sum_sum_30d": 9.7
+        }
+      },
+      "puno": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 17.6,
+          "relative_humidity_2m_mean_lag1": 45.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 22.7,
+          "temperature_2m_max_mean_3d": 17.7,
+          "temperature_2m_max_mean_7d": 17.5857,
+          "relative_humidity_2m_mean_mean_7d": 38.4286,
+          "wind_speed_10m_max_mean_7d": 20.3571,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 19.7
+        }
+      },
+      "san_martin": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 31.1,
+          "relative_humidity_2m_mean_lag1": 84.0,
+          "precipitation_sum_lag1": 32.0,
+          "wind_speed_10m_max_lag1": 8.9,
+          "temperature_2m_max_mean_3d": 31.9333,
+          "temperature_2m_max_mean_7d": 31.9714,
+          "relative_humidity_2m_mean_mean_7d": 80.0,
+          "wind_speed_10m_max_mean_7d": 7.6714,
+          "precipitation_sum_sum_3d": 43.2,
+          "precipitation_sum_sum_7d": 48.2,
+          "precipitation_sum_sum_30d": 230.3
+        }
+      },
+      "tacna": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 19.6,
+          "relative_humidity_2m_mean_lag1": 16.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 12.0,
+          "temperature_2m_max_mean_3d": 19.7667,
+          "temperature_2m_max_mean_7d": 19.4143,
+          "relative_humidity_2m_mean_mean_7d": 18.8571,
+          "wind_speed_10m_max_mean_7d": 12.8429,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.1,
+          "precipitation_sum_sum_30d": 0.9
+        }
+      },
+      "tumbes": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 34.0,
+          "relative_humidity_2m_mean_lag1": 63.0,
+          "precipitation_sum_lag1": 1.0,
+          "wind_speed_10m_max_lag1": 15.6,
+          "temperature_2m_max_mean_3d": 34.3667,
+          "temperature_2m_max_mean_7d": 33.9571,
+          "relative_humidity_2m_mean_mean_7d": 64.5714,
+          "wind_speed_10m_max_mean_7d": 18.9857,
+          "precipitation_sum_sum_3d": 6.9,
+          "precipitation_sum_sum_7d": 12.4,
+          "precipitation_sum_sum_30d": 40.5
+        }
+      },
+      "ucayali": {
+        "date": "2026-10-10",
+        "features": {
+          "temperature_2m_max_lag1": 32.7,
+          "relative_humidity_2m_mean_lag1": 81.0,
+          "precipitation_sum_lag1": 4.2,
+          "wind_speed_10m_max_lag1": 8.9,
+          "temperature_2m_max_mean_3d": 32.7667,
+          "temperature_2m_max_mean_7d": 33.0857,
+          "relative_humidity_2m_mean_mean_7d": 76.2857,
+          "wind_speed_10m_max_mean_7d": 13.1429,
+          "precipitation_sum_sum_3d": 15.6,
+          "precipitation_sum_sum_7d": 17.0,
+          "precipitation_sum_sum_30d": 74.2
+        }
+      }
+    },
+    "dry": {
+      "amazonas": {
+        "date": "2026-07-27",
+        "features": {
+          "temperature_2m_max_lag1": 27.9,
+          "relative_humidity_2m_mean_lag1": 79.0,
+          "precipitation_sum_lag1": 0.7,
+          "wind_speed_10m_max_lag1": 7.5,
+          "temperature_2m_max_mean_3d": 26.5333,
+          "temperature_2m_max_mean_7d": 26.7429,
+          "relative_humidity_2m_mean_mean_7d": 87.0,
+          "wind_speed_10m_max_mean_7d": 7.4857,
+          "precipitation_sum_sum_3d": 33.1,
+          "precipitation_sum_sum_7d": 76.2,
+          "precipitation_sum_sum_30d": 318.9
+        }
+      },
+      "ancash": {
+        "date": "2026-07-01",
+        "features": {
+          "temperature_2m_max_lag1": 10.9,
+          "relative_humidity_2m_mean_lag1": 48.0,
+          "precipitation_sum_lag1": 0.2,
+          "wind_speed_10m_max_lag1": 13.7,
+          "temperature_2m_max_mean_3d": 11.1333,
+          "temperature_2m_max_mean_7d": 11.0,
+          "relative_humidity_2m_mean_mean_7d": 55.8571,
+          "wind_speed_10m_max_mean_7d": 12.5286,
+          "precipitation_sum_sum_3d": 0.2,
+          "precipitation_sum_sum_7d": 1.7,
+          "precipitation_sum_sum_30d": 19.6
+        }
+      },
+      "apurimac": {
+        "date": "2025-07-10",
+        "features": {
+          "temperature_2m_max_lag1": 10.2,
+          "relative_humidity_2m_mean_lag1": 55.0,
+          "precipitation_sum_lag1": 0.7,
+          "wind_speed_10m_max_lag1": 8.8,
+          "temperature_2m_max_mean_3d": 10.3333,
+          "temperature_2m_max_mean_7d": 9.5714,
+          "relative_humidity_2m_mean_mean_7d": 57.0,
+          "wind_speed_10m_max_mean_7d": 7.6143,
+          "precipitation_sum_sum_3d": 1.7,
+          "precipitation_sum_sum_7d": 1.8,
+          "precipitation_sum_sum_30d": 20.1
+        }
+      },
+      "arequipa": {
+        "date": "2026-06-03",
+        "features": {
+          "temperature_2m_max_lag1": 25.4,
+          "relative_humidity_2m_mean_lag1": 26.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 8.1,
+          "temperature_2m_max_mean_3d": 24.2333,
+          "temperature_2m_max_mean_7d": 24.2571,
+          "relative_humidity_2m_mean_mean_7d": 34.1429,
+          "wind_speed_10m_max_mean_7d": 8.4571,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 0.3
+        }
+      },
+      "ayacucho": {
+        "date": "2025-12-14",
+        "features": {
+          "temperature_2m_max_lag1": 18.6,
+          "relative_humidity_2m_mean_lag1": 46.0,
+          "precipitation_sum_lag1": 0.4,
+          "wind_speed_10m_max_lag1": 21.6,
+          "temperature_2m_max_mean_3d": 17.5667,
+          "temperature_2m_max_mean_7d": 18.0286,
+          "relative_humidity_2m_mean_mean_7d": 49.8571,
+          "wind_speed_10m_max_mean_7d": 17.7857,
+          "precipitation_sum_sum_3d": 12.3,
+          "precipitation_sum_sum_7d": 21.6,
+          "precipitation_sum_sum_30d": 73.4
+        }
+      },
+      "cajamarca": {
+        "date": "2026-09-21",
+        "features": {
+          "temperature_2m_max_lag1": 29.5,
+          "relative_humidity_2m_mean_lag1": 65.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 8.8,
+          "temperature_2m_max_mean_3d": 28.9333,
+          "temperature_2m_max_mean_7d": 28.3,
+          "relative_humidity_2m_mean_mean_7d": 74.0,
+          "wind_speed_10m_max_mean_7d": 10.8286,
+          "precipitation_sum_sum_3d": 4.6,
+          "precipitation_sum_sum_7d": 13.8,
+          "precipitation_sum_sum_30d": 32.6
+        }
+      },
+      "callao": {
+        "date": "2026-01-25",
+        "features": {
+          "temperature_2m_max_lag1": 28.7,
+          "relative_humidity_2m_mean_lag1": 65.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 11.3,
+          "temperature_2m_max_mean_3d": 28.1667,
+          "temperature_2m_max_mean_7d": 27.7286,
+          "relative_humidity_2m_mean_mean_7d": 73.8571,
+          "wind_speed_10m_max_mean_7d": 11.5143,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 36.9
+        }
+      },
+      "cusco": {
+        "date": "2025-08-13",
+        "features": {
+          "temperature_2m_max_lag1": 10.1,
+          "relative_humidity_2m_mean_lag1": 71.0,
+          "precipitation_sum_lag1": 1.7,
+          "wind_speed_10m_max_lag1": 7.6,
+          "temperature_2m_max_mean_3d": 9.6,
+          "temperature_2m_max_mean_7d": 9.2571,
+          "relative_humidity_2m_mean_mean_7d": 78.0,
+          "wind_speed_10m_max_mean_7d": 9.1143,
+          "precipitation_sum_sum_3d": 4.8,
+          "precipitation_sum_sum_7d": 14.4,
+          "precipitation_sum_sum_30d": 43.2
+        }
+      },
+      "huancavelica": {
+        "date": "2025-12-27",
+        "features": {
+          "temperature_2m_max_lag1": 10.7,
+          "relative_humidity_2m_mean_lag1": 58.0,
+          "precipitation_sum_lag1": 0.2,
+          "wind_speed_10m_max_lag1": 21.3,
+          "temperature_2m_max_mean_3d": 10.4667,
+          "temperature_2m_max_mean_7d": 10.1571,
+          "relative_humidity_2m_mean_mean_7d": 55.2857,
+          "wind_speed_10m_max_mean_7d": 20.6571,
+          "precipitation_sum_sum_3d": 1.3,
+          "precipitation_sum_sum_7d": 9.6,
+          "precipitation_sum_sum_30d": 88.5
+        }
+      },
+      "huanuco": {
+        "date": "2025-12-08",
+        "features": {
+          "temperature_2m_max_lag1": 12.6,
+          "relative_humidity_2m_mean_lag1": 66.0,
+          "precipitation_sum_lag1": 3.0,
+          "wind_speed_10m_max_lag1": 7.5,
+          "temperature_2m_max_mean_3d": 12.2333,
+          "temperature_2m_max_mean_7d": 12.3714,
+          "relative_humidity_2m_mean_mean_7d": 81.2857,
+          "wind_speed_10m_max_mean_7d": 7.1,
+          "precipitation_sum_sum_3d": 4.7,
+          "precipitation_sum_sum_7d": 57.0,
+          "precipitation_sum_sum_30d": 368.9
+        }
+      },
+      "ica": {
+        "date": "2024-12-14",
+        "features": {
+          "temperature_2m_max_lag1": 32.7,
+          "relative_humidity_2m_mean_lag1": 63.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 20.5,
+          "temperature_2m_max_mean_3d": 32.0,
+          "temperature_2m_max_mean_7d": 31.0857,
+          "relative_humidity_2m_mean_mean_7d": 68.5714,
+          "wind_speed_10m_max_mean_7d": 18.9,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.9,
+          "precipitation_sum_sum_30d": 0.9
+        }
+      },
+      "junin": {
+        "date": "2026-09-01",
+        "features": {
+          "temperature_2m_max_lag1": 13.9,
+          "relative_humidity_2m_mean_lag1": 79.0,
+          "precipitation_sum_lag1": 1.0,
+          "wind_speed_10m_max_lag1": 10.3,
+          "temperature_2m_max_mean_3d": 13.2,
+          "temperature_2m_max_mean_7d": 12.9,
+          "relative_humidity_2m_mean_mean_7d": 76.0,
+          "wind_speed_10m_max_mean_7d": 9.4714,
+          "precipitation_sum_sum_3d": 9.4,
+          "precipitation_sum_sum_7d": 15.1,
+          "precipitation_sum_sum_30d": 94.1
+        }
+      },
+      "la_libertad": {
+        "date": "2026-07-28",
+        "features": {
+          "temperature_2m_max_lag1": 15.4,
+          "relative_humidity_2m_mean_lag1": 67.0,
+          "precipitation_sum_lag1": 0.4,
+          "wind_speed_10m_max_lag1": 11.5,
+          "temperature_2m_max_mean_3d": 15.4,
+          "temperature_2m_max_mean_7d": 14.7571,
+          "relative_humidity_2m_mean_mean_7d": 75.5714,
+          "wind_speed_10m_max_mean_7d": 13.3714,
+          "precipitation_sum_sum_3d": 2.6,
+          "precipitation_sum_sum_7d": 21.1,
+          "precipitation_sum_sum_30d": 57.8
+        }
+      },
+      "lambayeque": {
+        "date": "2026-05-27",
+        "features": {
+          "temperature_2m_max_lag1": 30.6,
+          "relative_humidity_2m_mean_lag1": 72.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 27.4,
+          "temperature_2m_max_mean_3d": 30.7333,
+          "temperature_2m_max_mean_7d": 30.4857,
+          "relative_humidity_2m_mean_mean_7d": 71.8571,
+          "wind_speed_10m_max_mean_7d": 28.2571,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 1.0
+        }
+      },
+      "lima": {
+        "date": "2026-06-27",
+        "features": {
+          "temperature_2m_max_lag1": 17.2,
+          "relative_humidity_2m_mean_lag1": 48.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 9.5,
+          "temperature_2m_max_mean_3d": 17.2667,
+          "temperature_2m_max_mean_7d": 16.7857,
+          "relative_humidity_2m_mean_mean_7d": 52.1429,
+          "wind_speed_10m_max_mean_7d": 9.3571,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 44.2
+        }
+      },
+      "loreto": {
+        "date": "2026-08-27",
+        "features": {
+          "temperature_2m_max_lag1": 30.9,
+          "relative_humidity_2m_mean_lag1": 83.0,
+          "precipitation_sum_lag1": 0.3,
+          "wind_speed_10m_max_lag1": 9.1,
+          "temperature_2m_max_mean_3d": 28.5333,
+          "temperature_2m_max_mean_7d": 29.3714,
+          "relative_humidity_2m_mean_mean_7d": 90.2857,
+          "wind_speed_10m_max_mean_7d": 9.3143,
+          "precipitation_sum_sum_3d": 26.7,
+          "precipitation_sum_sum_7d": 65.6,
+          "precipitation_sum_sum_30d": 175.8
+        }
+      },
+      "madre_de_dios": {
+        "date": "2025-10-13",
+        "features": {
+          "temperature_2m_max_lag1": 31.8,
+          "relative_humidity_2m_mean_lag1": 73.0,
+          "precipitation_sum_lag1": 1.2,
+          "wind_speed_10m_max_lag1": 14.3,
+          "temperature_2m_max_mean_3d": 32.3333,
+          "temperature_2m_max_mean_7d": 30.0286,
+          "relative_humidity_2m_mean_mean_7d": 77.0,
+          "wind_speed_10m_max_mean_7d": 12.5143,
+          "precipitation_sum_sum_3d": 1.2,
+          "precipitation_sum_sum_7d": 18.6,
+          "precipitation_sum_sum_30d": 89.1
+        }
+      },
+      "moquegua": {
+        "date": "2025-09-24",
+        "features": {
+          "temperature_2m_max_lag1": 21.4,
+          "relative_humidity_2m_mean_lag1": 22.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 13.6,
+          "temperature_2m_max_mean_3d": 21.9,
+          "temperature_2m_max_mean_7d": 21.2714,
+          "relative_humidity_2m_mean_mean_7d": 22.0,
+          "wind_speed_10m_max_mean_7d": 13.6143,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 0.2
+        }
+      },
+      "pasco": {
+        "date": "2026-09-10",
+        "features": {
+          "temperature_2m_max_lag1": 28.2,
+          "relative_humidity_2m_mean_lag1": 83.0,
+          "precipitation_sum_lag1": 0.1,
+          "wind_speed_10m_max_lag1": 6.1,
+          "temperature_2m_max_mean_3d": 25.0,
+          "temperature_2m_max_mean_7d": 26.4714,
+          "relative_humidity_2m_mean_mean_7d": 88.2857,
+          "wind_speed_10m_max_mean_7d": 6.9571,
+          "precipitation_sum_sum_3d": 46.9,
+          "precipitation_sum_sum_7d": 72.0,
+          "precipitation_sum_sum_30d": 219.5
+        }
+      },
+      "piura": {
+        "date": "2026-08-27",
+        "features": {
+          "temperature_2m_max_lag1": 32.5,
+          "relative_humidity_2m_mean_lag1": 66.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 23.3,
+          "temperature_2m_max_mean_3d": 32.3,
+          "temperature_2m_max_mean_7d": 31.9143,
+          "relative_humidity_2m_mean_mean_7d": 66.1429,
+          "wind_speed_10m_max_mean_7d": 22.5143,
+          "precipitation_sum_sum_3d": 0.5,
+          "precipitation_sum_sum_7d": 0.5,
+          "precipitation_sum_sum_30d": 2.4
+        }
+      },
+      "puno": {
+        "date": "2026-07-29",
+        "features": {
+          "temperature_2m_max_lag1": 15.0,
+          "relative_humidity_2m_mean_lag1": 51.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 11.0,
+          "temperature_2m_max_mean_3d": 15.2667,
+          "temperature_2m_max_mean_7d": 14.9429,
+          "relative_humidity_2m_mean_mean_7d": 53.8571,
+          "wind_speed_10m_max_mean_7d": 15.5429,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 5.0
+        }
+      },
+      "san_martin": {
+        "date": "2026-07-21",
+        "features": {
+          "temperature_2m_max_lag1": 30.8,
+          "relative_humidity_2m_mean_lag1": 80.0,
+          "precipitation_sum_lag1": 0.1,
+          "wind_speed_10m_max_lag1": 8.0,
+          "temperature_2m_max_mean_3d": 30.3667,
+          "temperature_2m_max_mean_7d": 29.3286,
+          "relative_humidity_2m_mean_mean_7d": 83.4286,
+          "wind_speed_10m_max_mean_7d": 7.7286,
+          "precipitation_sum_sum_3d": 7.7,
+          "precipitation_sum_sum_7d": 12.9,
+          "precipitation_sum_sum_30d": 187.4
+        }
+      },
+      "tacna": {
+        "date": "2025-07-03",
+        "features": {
+          "temperature_2m_max_lag1": 18.1,
+          "relative_humidity_2m_mean_lag1": 23.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 11.2,
+          "temperature_2m_max_mean_3d": 17.4,
+          "temperature_2m_max_mean_7d": 15.3,
+          "relative_humidity_2m_mean_mean_7d": 35.1429,
+          "wind_speed_10m_max_mean_7d": 12.9143,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.1,
+          "precipitation_sum_sum_30d": 0.2
+        }
+      },
+      "tumbes": {
+        "date": "2026-06-28",
+        "features": {
+          "temperature_2m_max_lag1": 34.4,
+          "relative_humidity_2m_mean_lag1": 57.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 18.5,
+          "temperature_2m_max_mean_3d": 32.8667,
+          "temperature_2m_max_mean_7d": 32.8857,
+          "relative_humidity_2m_mean_mean_7d": 62.0,
+          "wind_speed_10m_max_mean_7d": 18.3,
+          "precipitation_sum_sum_3d": 0.1,
+          "precipitation_sum_sum_7d": 0.2,
+          "precipitation_sum_sum_30d": 23.8
+        }
+      },
+      "ucayali": {
+        "date": "2026-08-01",
+        "features": {
+          "temperature_2m_max_lag1": 32.5,
+          "relative_humidity_2m_mean_lag1": 80.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 6.6,
+          "temperature_2m_max_mean_3d": 31.7,
+          "temperature_2m_max_mean_7d": 31.2857,
+          "relative_humidity_2m_mean_mean_7d": 84.2857,
+          "wind_speed_10m_max_mean_7d": 6.6429,
+          "precipitation_sum_sum_3d": 4.7,
+          "precipitation_sum_sum_7d": 7.6,
+          "precipitation_sum_sum_30d": 101.2
+        }
+      }
+    },
+    "wet": {
+      "amazonas": {
+        "date": "2025-06-17",
+        "features": {
+          "temperature_2m_max_lag1": 23.7,
+          "relative_humidity_2m_mean_lag1": 96.0,
+          "precipitation_sum_lag1": 33.8,
+          "wind_speed_10m_max_lag1": 6.6,
+          "temperature_2m_max_mean_3d": 24.1667,
+          "temperature_2m_max_mean_7d": 24.0,
+          "relative_humidity_2m_mean_mean_7d": 93.5714,
+          "wind_speed_10m_max_mean_7d": 6.9143,
+          "precipitation_sum_sum_3d": 84.2,
+          "precipitation_sum_sum_7d": 139.6,
+          "precipitation_sum_sum_30d": 376.0
+        }
+      },
+      "ancash": {
+        "date": "2026-03-03",
+        "features": {
+          "temperature_2m_max_lag1": 7.5,
+          "relative_humidity_2m_mean_lag1": 90.0,
+          "precipitation_sum_lag1": 8.1,
+          "wind_speed_10m_max_lag1": 8.1,
+          "temperature_2m_max_mean_3d": 7.4333,
+          "temperature_2m_max_mean_7d": 6.6286,
+          "relative_humidity_2m_mean_mean_7d": 91.0,
+          "wind_speed_10m_max_mean_7d": 7.7,
+          "precipitation_sum_sum_3d": 19.3,
+          "precipitation_sum_sum_7d": 62.7,
+          "precipitation_sum_sum_30d": 224.3
+        }
+      },
+      "apurimac": {
+        "date": "2025-01-02",
+        "features": {
+          "temperature_2m_max_lag1": 7.8,
+          "relative_humidity_2m_mean_lag1": 91.0,
+          "precipitation_sum_lag1": 11.0,
+          "wind_speed_10m_max_lag1": 8.4,
+          "temperature_2m_max_mean_3d": 9.2,
+          "temperature_2m_max_mean_7d": 9.5429,
+          "relative_humidity_2m_mean_mean_7d": 85.8571,
+          "wind_speed_10m_max_mean_7d": 9.0,
+          "precipitation_sum_sum_3d": 20.9,
+          "precipitation_sum_sum_7d": 42.2,
+          "precipitation_sum_sum_30d": 269.0
+        }
+      },
+      "arequipa": {
+        "date": "2026-01-18",
+        "features": {
+          "temperature_2m_max_lag1": 20.7,
+          "relative_humidity_2m_mean_lag1": 87.0,
+          "precipitation_sum_lag1": 4.6,
+          "wind_speed_10m_max_lag1": 7.8,
+          "temperature_2m_max_mean_3d": 19.2667,
+          "temperature_2m_max_mean_7d": 19.8,
+          "relative_humidity_2m_mean_mean_7d": 84.8571,
+          "wind_speed_10m_max_mean_7d": 8.7714,
+          "precipitation_sum_sum_3d": 27.0,
+          "precipitation_sum_sum_7d": 49.5,
+          "precipitation_sum_sum_30d": 58.6
+        }
+      },
+      "ayacucho": {
+        "date": "2026-01-16",
+        "features": {
+          "temperature_2m_max_lag1": 13.5,
+          "relative_humidity_2m_mean_lag1": 85.0,
+          "precipitation_sum_lag1": 11.8,
+          "wind_speed_10m_max_lag1": 10.1,
+          "temperature_2m_max_mean_3d": 12.6333,
+          "temperature_2m_max_mean_7d": 13.8286,
+          "relative_humidity_2m_mean_mean_7d": 83.7143,
+          "wind_speed_10m_max_mean_7d": 11.3571,
+          "precipitation_sum_sum_3d": 33.2,
+          "precipitation_sum_sum_7d": 88.5,
+          "precipitation_sum_sum_30d": 242.1
+        }
+      },
+      "cajamarca": {
+        "date": "2026-01-27",
+        "features": {
+          "temperature_2m_max_lag1": 26.4,
+          "relative_humidity_2m_mean_lag1": 86.0,
+          "precipitation_sum_lag1": 5.8,
+          "wind_speed_10m_max_lag1": 3.8,
+          "temperature_2m_max_mean_3d": 26.7667,
+          "temperature_2m_max_mean_7d": 28.2286,
+          "relative_humidity_2m_mean_mean_7d": 80.0,
+          "wind_speed_10m_max_mean_7d": 7.6,
+          "precipitation_sum_sum_3d": 13.0,
+          "precipitation_sum_sum_7d": 56.7,
+          "precipitation_sum_sum_30d": 116.9
+        }
+      },
+      "callao": {
+        "date": "2025-07-13",
+        "features": {
+          "temperature_2m_max_lag1": 21.2,
+          "relative_humidity_2m_mean_lag1": 80.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 13.9,
+          "temperature_2m_max_mean_3d": 20.5,
+          "temperature_2m_max_mean_7d": 20.6429,
+          "relative_humidity_2m_mean_mean_7d": 79.7143,
+          "wind_speed_10m_max_mean_7d": 14.2,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 3.4
+        }
+      },
+      "cusco": {
+        "date": "2025-01-24",
+        "features": {
+          "temperature_2m_max_lag1": 7.9,
+          "relative_humidity_2m_mean_lag1": 90.0,
+          "precipitation_sum_lag1": 9.1,
+          "wind_speed_10m_max_lag1": 11.8,
+          "temperature_2m_max_mean_3d": 7.6333,
+          "temperature_2m_max_mean_7d": 7.7143,
+          "relative_humidity_2m_mean_mean_7d": 88.0,
+          "wind_speed_10m_max_mean_7d": 10.2429,
+          "precipitation_sum_sum_3d": 38.3,
+          "precipitation_sum_sum_7d": 75.5,
+          "precipitation_sum_sum_30d": 203.9
+        }
+      },
+      "huancavelica": {
+        "date": "2025-04-04",
+        "features": {
+          "temperature_2m_max_lag1": 7.7,
+          "relative_humidity_2m_mean_lag1": 93.0,
+          "precipitation_sum_lag1": 19.6,
+          "wind_speed_10m_max_lag1": 13.1,
+          "temperature_2m_max_mean_3d": 6.8,
+          "temperature_2m_max_mean_7d": 7.4429,
+          "relative_humidity_2m_mean_mean_7d": 93.0,
+          "wind_speed_10m_max_mean_7d": 12.4286,
+          "precipitation_sum_sum_3d": 34.0,
+          "precipitation_sum_sum_7d": 74.1,
+          "precipitation_sum_sum_30d": 245.7
+        }
+      },
+      "huanuco": {
+        "date": "2025-02-02",
+        "features": {
+          "temperature_2m_max_lag1": 9.9,
+          "relative_humidity_2m_mean_lag1": 97.0,
+          "precipitation_sum_lag1": 22.1,
+          "wind_speed_10m_max_lag1": 6.9,
+          "temperature_2m_max_mean_3d": 10.9667,
+          "temperature_2m_max_mean_7d": 10.3143,
+          "relative_humidity_2m_mean_mean_7d": 92.2857,
+          "wind_speed_10m_max_mean_7d": 6.9286,
+          "precipitation_sum_sum_3d": 45.3,
+          "precipitation_sum_sum_7d": 67.0,
+          "precipitation_sum_sum_30d": 594.8
+        }
+      },
+      "ica": {
+        "date": "2026-06-20",
+        "features": {
+          "temperature_2m_max_lag1": 24.3,
+          "relative_humidity_2m_mean_lag1": 79.0,
+          "precipitation_sum_lag1": 0.1,
+          "wind_speed_10m_max_lag1": 17.7,
+          "temperature_2m_max_mean_3d": 25.9667,
+          "temperature_2m_max_mean_7d": 27.6,
+          "relative_humidity_2m_mean_mean_7d": 76.8571,
+          "wind_speed_10m_max_mean_7d": 18.1714,
+          "precipitation_sum_sum_3d": 0.5,
+          "precipitation_sum_sum_7d": 0.5,
+          "precipitation_sum_sum_30d": 0.8
+        }
+      },
+      "junin": {
+        "date": "2026-02-14",
+        "features": {
+          "temperature_2m_max_lag1": 8.8,
+          "relative_humidity_2m_mean_lag1": 88.0,
+          "precipitation_sum_lag1": 5.1,
+          "wind_speed_10m_max_lag1": 10.3,
+          "temperature_2m_max_mean_3d": 8.8,
+          "temperature_2m_max_mean_7d": 10.1429,
+          "relative_humidity_2m_mean_mean_7d": 76.5714,
+          "wind_speed_10m_max_mean_7d": 12.6857,
+          "precipitation_sum_sum_3d": 17.4,
+          "precipitation_sum_sum_7d": 22.5,
+          "precipitation_sum_sum_30d": 219.8
+        }
+      },
+      "la_libertad": {
+        "date": "2026-03-07",
+        "features": {
+          "temperature_2m_max_lag1": 12.5,
+          "relative_humidity_2m_mean_lag1": 90.0,
+          "precipitation_sum_lag1": 8.3,
+          "wind_speed_10m_max_lag1": 10.2,
+          "temperature_2m_max_mean_3d": 12.4333,
+          "temperature_2m_max_mean_7d": 13.0429,
+          "relative_humidity_2m_mean_mean_7d": 87.1429,
+          "wind_speed_10m_max_mean_7d": 9.6286,
+          "precipitation_sum_sum_3d": 25.4,
+          "precipitation_sum_sum_7d": 59.5,
+          "precipitation_sum_sum_30d": 318.7
+        }
+      },
+      "lambayeque": {
+        "date": "2025-10-24",
+        "features": {
+          "temperature_2m_max_lag1": 26.5,
+          "relative_humidity_2m_mean_lag1": 75.0,
+          "precipitation_sum_lag1": 0.0,
+          "wind_speed_10m_max_lag1": 27.7,
+          "temperature_2m_max_mean_3d": 26.7667,
+          "temperature_2m_max_mean_7d": 26.4429,
+          "relative_humidity_2m_mean_mean_7d": 74.0,
+          "wind_speed_10m_max_mean_7d": 27.2857,
+          "precipitation_sum_sum_3d": 0.0,
+          "precipitation_sum_sum_7d": 0.0,
+          "precipitation_sum_sum_30d": 8.7
+        }
+      },
+      "lima": {
+        "date": "2026-03-20",
+        "features": {
+          "temperature_2m_max_lag1": 10.5,
+          "relative_humidity_2m_mean_lag1": 88.0,
+          "precipitation_sum_lag1": 9.1,
+          "wind_speed_10m_max_lag1": 8.1,
+          "temperature_2m_max_mean_3d": 10.5667,
+          "temperature_2m_max_mean_7d": 11.4429,
+          "relative_humidity_2m_mean_mean_7d": 90.0,
+          "wind_speed_10m_max_mean_7d": 7.3857,
+          "precipitation_sum_sum_3d": 27.7,
+          "precipitation_sum_sum_7d": 84.2,
+          "precipitation_sum_sum_30d": 506.9
+        }
+      },
+      "loreto": {
+        "date": "2025-05-02",
+        "features": {
+          "temperature_2m_max_lag1": 29.1,
+          "relative_humidity_2m_mean_lag1": 95.0,
+          "precipitation_sum_lag1": 28.5,
+          "wind_speed_10m_max_lag1": 9.0,
+          "temperature_2m_max_mean_3d": 29.4333,
+          "temperature_2m_max_mean_7d": 29.6,
+          "relative_humidity_2m_mean_mean_7d": 92.7143,
+          "wind_speed_10m_max_mean_7d": 9.0571,
+          "precipitation_sum_sum_3d": 46.5,
+          "precipitation_sum_sum_7d": 109.4,
+          "precipitation_sum_sum_30d": 439.9
+        }
+      },
+      "madre_de_dios": {
+        "date": "2026-04-10",
+        "features": {
+          "temperature_2m_max_lag1": 27.0,
+          "relative_humidity_2m_mean_lag1": 93.0,
+          "precipitation_sum_lag1": 3.1,
+          "wind_speed_10m_max_lag1": 10.5,
+          "temperature_2m_max_mean_3d": 28.8333,
+          "temperature_2m_max_mean_7d": 29.7571,
+          "relative_humidity_2m_mean_mean_7d": 87.7143,
+          "wind_speed_10m_max_mean_7d": 9.9143,
+          "precipitation_sum_sum_3d": 15.8,
+          "precipitation_sum_sum_7d": 33.5,
+          "precipitation_sum_sum_30d": 255.6
+        }
+      },
+      "moquegua": {
+        "date": "2025-01-22",
+        "features": {
+          "temperature_2m_max_lag1": 15.1,
+          "relative_humidity_2m_mean_lag1": 81.0,
+          "precipitation_sum_lag1": 10.1,
+          "wind_speed_10m_max_lag1": 11.5,
+          "temperature_2m_max_mean_3d": 17.4333,
+          "temperature_2m_max_mean_7d": 17.2143,
+          "relative_humidity_2m_mean_mean_7d": 70.4286,
+          "wind_speed_10m_max_mean_7d": 12.2,
+          "precipitation_sum_sum_3d": 10.1,
+          "precipitation_sum_sum_7d": 15.6,
+          "precipitation_sum_sum_30d": 37.2
+        }
+      },
+      "pasco": {
+        "date": "2025-11-02",
+        "features": {
+          "temperature_2m_max_lag1": 23.3,
+          "relative_humidity_2m_mean_lag1": 99.0,
+          "precipitation_sum_lag1": 36.4,
+          "wind_speed_10m_max_lag1": 6.1,
+          "temperature_2m_max_mean_3d": 24.1667,
+          "temperature_2m_max_mean_7d": 25.1,
+          "relative_humidity_2m_mean_mean_7d": 94.0,
+          "wind_speed_10m_max_mean_7d": 6.2429,
+          "precipitation_sum_sum_3d": 113.6,
+          "precipitation_sum_sum_7d": 242.3,
+          "precipitation_sum_sum_30d": 500.1
+        }
+      },
+      "piura": {
+        "date": "2025-04-06",
+        "features": {
+          "temperature_2m_max_lag1": 30.5,
+          "relative_humidity_2m_mean_lag1": 82.0,
+          "precipitation_sum_lag1": 3.4,
+          "wind_speed_10m_max_lag1": 18.6,
+          "temperature_2m_max_mean_3d": 30.0667,
+          "temperature_2m_max_mean_7d": 29.9143,
+          "relative_humidity_2m_mean_mean_7d": 84.2857,
+          "wind_speed_10m_max_mean_7d": 13.9429,
+          "precipitation_sum_sum_3d": 9.6,
+          "precipitation_sum_sum_7d": 74.2,
+          "precipitation_sum_sum_30d": 233.5
+        }
+      },
+      "puno": {
+        "date": "2025-01-21",
+        "features": {
+          "temperature_2m_max_lag1": 12.9,
+          "relative_humidity_2m_mean_lag1": 80.0,
+          "precipitation_sum_lag1": 1.5,
+          "wind_speed_10m_max_lag1": 19.0,
+          "temperature_2m_max_mean_3d": 12.8667,
+          "temperature_2m_max_mean_7d": 13.6571,
+          "relative_humidity_2m_mean_mean_7d": 71.1429,
+          "wind_speed_10m_max_mean_7d": 16.3143,
+          "precipitation_sum_sum_3d": 20.7,
+          "precipitation_sum_sum_7d": 24.2,
+          "precipitation_sum_sum_30d": 162.6
+        }
+      },
+      "san_martin": {
+        "date": "2024-11-16",
+        "features": {
+          "temperature_2m_max_lag1": 27.0,
+          "relative_humidity_2m_mean_lag1": 90.0,
+          "precipitation_sum_lag1": 7.7,
+          "wind_speed_10m_max_lag1": 4.4,
+          "temperature_2m_max_mean_3d": 27.1333,
+          "temperature_2m_max_mean_7d": 27.5286,
+          "relative_humidity_2m_mean_mean_7d": 89.0,
+          "wind_speed_10m_max_mean_7d": 6.9286,
+          "precipitation_sum_sum_3d": 60.7,
+          "precipitation_sum_sum_7d": 80.4,
+          "precipitation_sum_sum_30d": 413.4
+        }
+      },
+      "tacna": {
+        "date": "2026-01-20",
+        "features": {
+          "temperature_2m_max_lag1": 13.1,
+          "relative_humidity_2m_mean_lag1": 82.0,
+          "precipitation_sum_lag1": 12.2,
+          "wind_speed_10m_max_lag1": 8.4,
+          "temperature_2m_max_mean_3d": 14.4667,
+          "temperature_2m_max_mean_7d": 14.2714,
+          "relative_humidity_2m_mean_mean_7d": 81.2857,
+          "wind_speed_10m_max_mean_7d": 9.7143,
+          "precipitation_sum_sum_3d": 27.7,
+          "precipitation_sum_sum_7d": 80.0,
+          "precipitation_sum_sum_30d": 90.3
+        }
+      },
+      "tumbes": {
+        "date": "2026-03-01",
+        "features": {
+          "temperature_2m_max_lag1": 29.9,
+          "relative_humidity_2m_mean_lag1": 87.0,
+          "precipitation_sum_lag1": 12.0,
+          "wind_speed_10m_max_lag1": 13.5,
+          "temperature_2m_max_mean_3d": 29.8667,
+          "temperature_2m_max_mean_7d": 28.9,
+          "relative_humidity_2m_mean_mean_7d": 88.1429,
+          "wind_speed_10m_max_mean_7d": 10.8429,
+          "precipitation_sum_sum_3d": 22.4,
+          "precipitation_sum_sum_7d": 127.8,
+          "precipitation_sum_sum_30d": 341.2
+        }
+      },
+      "ucayali": {
+        "date": "2026-04-10",
+        "features": {
+          "temperature_2m_max_lag1": 28.9,
+          "relative_humidity_2m_mean_lag1": 94.0,
+          "precipitation_sum_lag1": 21.3,
+          "wind_speed_10m_max_lag1": 8.4,
+          "temperature_2m_max_mean_3d": 30.2,
+          "temperature_2m_max_mean_7d": 30.0714,
+          "relative_humidity_2m_mean_mean_7d": 90.7143,
+          "wind_speed_10m_max_mean_7d": 9.5429,
+          "precipitation_sum_sum_3d": 26.7,
+          "precipitation_sum_sum_7d": 64.2,
+          "precipitation_sum_sum_30d": 424.8
+        }
+      }
+    }
+  }
+}

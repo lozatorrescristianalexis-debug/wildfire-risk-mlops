@@ -1,168 +1,783 @@
 {
   "task": "spatiotemporal grid-cell FIRMS hotspot classification; not a fire forecast",
   "data_source": "firms_open_meteo",
-  "dataset": "E:\\aprendizaje de maquina\\data\\processed\\real_daily.csv",
-  "rows": 43344,
-  "date_start": "2024-11-11",
+  "training_region": "peru",
+  "weather_sampling": "25 regional representative Open-Meteo points",
+  "dataset": "/home/roger/Documents/Git/AprendizajeM/wildfire-risk-mlops/data/processed/real_daily.csv",
+  "rows": 350192,
+  "date_start": "2024-11-09",
   "date_end": "2026-10-10",
-  "grid_cells": 144,
-  "positive_grid_days": 2218,
-  "negative_grid_days": 41126,
-  "positive_rate": 0.05117201919527501,
-  "detection_count_in_retained_examples": 7206,
-  "train_rows": 34560,
-  "train_positive_rows": 1458,
-  "test_rows": 8784,
-  "test_positive_rows": 760,
-  "test_negative_rows": 8024,
-  "test_date_start": "2026-08-02",
+  "grid_cells": 509,
+  "positive_grid_days": 29136,
+  "negative_grid_days": 321056,
+  "positive_rate": 0.08320007310275505,
+  "detection_count_in_retained_examples": 120378,
+  "train_rows": 279950,
+  "train_positive_rows": 17658,
+  "test_rows": 70242,
+  "test_positive_rows": 11478,
+  "test_negative_rows": 58764,
+  "test_date_start": "2026-05-22",
   "test_date_end": "2026-10-10",
   "temporal_split": "80/20 by ascending distinct active date; no date appears in both partitions",
   "tuning": {
     "method": "Optuna TPE optimizing average precision across 3 expanding temporal folds",
-    "trials_per_model": 10,
+    "trials_per_model": 5,
     "model_selection": "best temporal OOF F1, tie-broken by CV average precision; test set not used"
   },
+  "calibration": "Platt logistic calibration fitted on temporal out-of-fold training predictions; the holdout is used only for evaluation. Reported probabilities estimate the chance of a recorded FIRMS detection under this dataset's sampling scheme, not the physical chance that a cell will burn.",
   "negative_definition": "No cell-level FIRMS detection on a day when at least one detection occurred somewhere in the region. This is a satellite-activity proxy, not verified absence of fire or guaranteed cell-level overpass.",
-  "selected_model": "xgboost",
-  "selected_threshold": 0.6532685160636902,
+  "selected_model": "hist_gradient_boosting",
+  "selected_threshold": 0.17483420669769908,
   "test_metrics": {
-    "f1": 0.5164960182025028,
-    "precision": 0.36281299946723494,
-    "recall": 0.8960526315789473,
-    "roc_auc": 0.9279458499501496,
-    "pr_auc": 0.5110301756557621,
-    "threshold": 0.6532685160636902,
+    "f1": 0.49679863229526333,
+    "precision": 0.4037487059336348,
+    "recall": 0.6455828541557763,
+    "roc_auc": 0.8270404959105948,
+    "pr_auc": 0.4588428876013675,
+    "brier_score": 0.1151363900388354,
+    "threshold": 0.17483420669769908,
     "confusion_matrix": [
       [
-        6828,
-        1196
+        47821,
+        10943
       ],
       [
-        79,
-        681
+        4068,
+        7410
       ]
     ]
   },
-  "models": {
-    "logistic": {
-      "best_params": {
-        "C": 0.0019517224641449498
-      },
-      "trials": 10,
-      "cv_mean_pr_auc": 0.14510283236030758,
-      "validation_f1_at_selected_threshold": 0.2691538974017322,
-      "selected_threshold_from_temporal_oof": 0.6404696629158999,
-      "test": {
-        "f1": 0.3485395470955038,
-        "precision": 0.23218189768255357,
-        "recall": 0.6986842105263158,
-        "roc_auc": 0.8149333250249252,
-        "pr_auc": 0.20158025480781994,
-        "threshold": 0.6404696629158999,
+  "regional_test_metrics": {
+    "amazonas": {
+      "name": "Amazonas",
+      "test_rows": 2208,
+      "positive_rows": 316,
+      "negative_rows": 1892,
+      "grid_cells": 16,
+      "metrics": {
+        "f1": 0.4464555052790347,
+        "precision": 0.4265129682997118,
+        "recall": 0.46835443037974683,
+        "roc_auc": 0.8475066569432921,
+        "pr_auc": 0.5088570155280219,
+        "brier_score": 0.10667966936339918,
+        "threshold": 0.17483420669769908,
         "confusion_matrix": [
           [
-            6268,
-            1756
+            1693,
+            199
           ],
           [
-            229,
-            531
+            168,
+            148
           ]
         ]
       }
     },
-    "random_forest": {
-      "best_params": {
-        "n_estimators": 100,
-        "max_depth": 18,
-        "min_samples_leaf": 13,
-        "max_features": 1.0
-      },
-      "trials": 10,
-      "cv_mean_pr_auc": 0.30753060431324,
-      "validation_f1_at_selected_threshold": 0.4206974128233971,
-      "selected_threshold_from_temporal_oof": 0.370900692673607,
-      "test": {
-        "f1": 0.52375249500998,
-        "precision": 0.37593123209169055,
-        "recall": 0.8631578947368421,
-        "roc_auc": 0.9292879584929421,
-        "pr_auc": 0.5165737545617187,
-        "threshold": 0.370900692673607,
+    "ancash": {
+      "name": "\u00c1ncash",
+      "test_rows": 2070,
+      "positive_rows": 494,
+      "negative_rows": 1576,
+      "grid_cells": 15,
+      "metrics": {
+        "f1": 0.4724517906336088,
+        "precision": 0.35803757828810023,
+        "recall": 0.694331983805668,
+        "roc_auc": 0.7116514930434246,
+        "pr_auc": 0.4011588391732103,
+        "brier_score": 0.17296106791055232,
+        "threshold": 0.17483420669769908,
         "confusion_matrix": [
           [
-            6935,
-            1089
+            961,
+            615
           ],
           [
-            104,
-            656
+            151,
+            343
           ]
         ]
       }
     },
-    "hist_gradient_boosting": {
-      "best_params": {
-        "max_iter": 100,
-        "learning_rate": 0.02864339657822303,
-        "max_leaf_nodes": 15,
-        "l2_regularization": 2.1423021757741068
-      },
-      "trials": 10,
-      "cv_mean_pr_auc": 0.3504081422600445,
-      "validation_f1_at_selected_threshold": 0.42563482466747277,
-      "selected_threshold_from_temporal_oof": 0.6265281098924931,
-      "test": {
-        "f1": 0.508955223880597,
-        "precision": 0.35520833333333335,
-        "recall": 0.8973684210526316,
-        "roc_auc": 0.9262482289972189,
-        "pr_auc": 0.48058381148025825,
-        "threshold": 0.6265281098924931,
+    "apurimac": {
+      "name": "Apur\u00edmac",
+      "test_rows": 1242,
+      "positive_rows": 208,
+      "negative_rows": 1034,
+      "grid_cells": 9,
+      "metrics": {
+        "f1": 0.35990888382687924,
+        "precision": 0.341991341991342,
+        "recall": 0.3798076923076923,
+        "roc_auc": 0.6881137479541735,
+        "pr_auc": 0.3102506181568008,
+        "brier_score": 0.13368206521301088,
+        "threshold": 0.17483420669769908,
         "confusion_matrix": [
           [
-            6786,
-            1238
+            882,
+            152
           ],
           [
-            78,
-            682
+            129,
+            79
           ]
         ]
       }
     },
-    "xgboost": {
-      "best_params": {
-        "n_estimators": 250,
-        "max_depth": 4,
-        "learning_rate": 0.023231731978492907,
-        "subsample": 0.984665661176,
-        "colsample_bytree": 0.9896896099223678,
-        "reg_lambda": 7.246804518258447
-      },
-      "trials": 10,
-      "cv_mean_pr_auc": 0.33044892655501507,
-      "validation_f1_at_selected_threshold": 0.4316360816748514,
-      "selected_threshold_from_temporal_oof": 0.6532685160636902,
-      "test": {
-        "f1": 0.5164960182025028,
-        "precision": 0.36281299946723494,
-        "recall": 0.8960526315789473,
-        "roc_auc": 0.9279458499501496,
-        "pr_auc": 0.5110301756557621,
-        "threshold": 0.6532685160636902,
+    "arequipa": {
+      "name": "Arequipa",
+      "test_rows": 3312,
+      "positive_rows": 290,
+      "negative_rows": 3022,
+      "grid_cells": 24,
+      "metrics": {
+        "f1": 0.00684931506849315,
+        "precision": 0.5,
+        "recall": 0.0034482758620689655,
+        "roc_auc": 0.7065388301878182,
+        "pr_auc": 0.17333080638167114,
+        "brier_score": 0.07862470663713897,
+        "threshold": 0.17483420669769908,
         "confusion_matrix": [
           [
-            6828,
-            1196
+            3021,
+            1
+          ],
+          [
+            289,
+            1
+          ]
+        ]
+      }
+    },
+    "ayacucho": {
+      "name": "Ayacucho",
+      "test_rows": 1932,
+      "positive_rows": 323,
+      "negative_rows": 1609,
+      "grid_cells": 14,
+      "metrics": {
+        "f1": 0.5204236006051437,
+        "precision": 0.5088757396449705,
+        "recall": 0.5325077399380805,
+        "roc_auc": 0.8206123835160966,
+        "pr_auc": 0.5342619424248539,
+        "brier_score": 0.12334322251226726,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            1443,
+            166
+          ],
+          [
+            151,
+            172
+          ]
+        ]
+      }
+    },
+    "cajamarca": {
+      "name": "Cajamarca",
+      "test_rows": 1518,
+      "positive_rows": 493,
+      "negative_rows": 1025,
+      "grid_cells": 11,
+      "metrics": {
+        "f1": 0.5494978479196556,
+        "precision": 0.42508324084350724,
+        "recall": 0.7768762677484787,
+        "roc_auc": 0.6940444268540048,
+        "pr_auc": 0.4790464795924228,
+        "brier_score": 0.22298813969410575,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            507,
+            518
+          ],
+          [
+            110,
+            383
+          ]
+        ]
+      }
+    },
+    "callao": {
+      "name": "Callao",
+      "test_rows": 0,
+      "positive_rows": 0,
+      "negative_rows": 0,
+      "grid_cells": 0,
+      "metrics": null
+    },
+    "cusco": {
+      "name": "Cusco",
+      "test_rows": 3174,
+      "positive_rows": 742,
+      "negative_rows": 2432,
+      "grid_cells": 23,
+      "metrics": {
+        "f1": 0.43378119001919385,
+        "precision": 0.41291108404384896,
+        "recall": 0.4568733153638814,
+        "roc_auc": 0.6869397476592425,
+        "pr_auc": 0.39799301597604486,
+        "brier_score": 0.17800372781347779,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            1950,
+            482
+          ],
+          [
+            403,
+            339
+          ]
+        ]
+      }
+    },
+    "huancavelica": {
+      "name": "Huancavelica",
+      "test_rows": 966,
+      "positive_rows": 170,
+      "negative_rows": 796,
+      "grid_cells": 7,
+      "metrics": {
+        "f1": 0.4944237918215613,
+        "precision": 0.36141304347826086,
+        "recall": 0.7823529411764706,
+        "roc_auc": 0.8040792196275496,
+        "pr_auc": 0.44635265020911974,
+        "brier_score": 0.1252373568887166,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            561,
+            235
+          ],
+          [
+            37,
+            133
+          ]
+        ]
+      }
+    },
+    "huanuco": {
+      "name": "Hu\u00e1nuco",
+      "test_rows": 1656,
+      "positive_rows": 686,
+      "negative_rows": 970,
+      "grid_cells": 12,
+      "metrics": {
+        "f1": 0.5466735430634347,
+        "precision": 0.4229848363926576,
+        "recall": 0.7725947521865889,
+        "roc_auc": 0.5431682245799645,
+        "pr_auc": 0.45555738304246574,
+        "brier_score": 0.27285026489747805,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            247,
+            723
+          ],
+          [
+            156,
+            530
+          ]
+        ]
+      }
+    },
+    "ica": {
+      "name": "Ica",
+      "test_rows": 1656,
+      "positive_rows": 218,
+      "negative_rows": 1438,
+      "grid_cells": 12,
+      "metrics": {
+        "f1": 0.5912596401028277,
+        "precision": 0.672514619883041,
+        "recall": 0.5275229357798165,
+        "roc_auc": 0.8619817917341874,
+        "pr_auc": 0.5954519792191089,
+        "brier_score": 0.08639877583041686,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            1382,
+            56
+          ],
+          [
+            103,
+            115
+          ]
+        ]
+      }
+    },
+    "junin": {
+      "name": "Jun\u00edn",
+      "test_rows": 2208,
+      "positive_rows": 929,
+      "negative_rows": 1279,
+      "grid_cells": 16,
+      "metrics": {
+        "f1": 0.5991154000804182,
+        "precision": 0.4781771501925546,
+        "recall": 0.8019375672766416,
+        "roc_auc": 0.6356515913687277,
+        "pr_auc": 0.5342321386631035,
+        "brier_score": 0.27806308402410823,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            466,
+            813
+          ],
+          [
+            184,
+            745
+          ]
+        ]
+      }
+    },
+    "la_libertad": {
+      "name": "La Libertad",
+      "test_rows": 1794,
+      "positive_rows": 502,
+      "negative_rows": 1292,
+      "grid_cells": 13,
+      "metrics": {
+        "f1": 0.47336561743341404,
+        "precision": 0.34,
+        "recall": 0.7788844621513944,
+        "roc_auc": 0.6577043220307623,
+        "pr_auc": 0.4178473399531998,
+        "brier_score": 0.19435680856691104,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            533,
+            759
+          ],
+          [
+            111,
+            391
+          ]
+        ]
+      }
+    },
+    "lambayeque": {
+      "name": "Lambayeque",
+      "test_rows": 828,
+      "positive_rows": 176,
+      "negative_rows": 652,
+      "grid_cells": 6,
+      "metrics": {
+        "f1": 0.578544061302682,
+        "precision": 0.43641618497109824,
+        "recall": 0.8579545454545454,
+        "roc_auc": 0.8338329615170106,
+        "pr_auc": 0.4896381380332427,
+        "brier_score": 0.13903843106637062,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            457,
+            195
+          ],
+          [
+            25,
+            151
+          ]
+        ]
+      }
+    },
+    "lima": {
+      "name": "Lima",
+      "test_rows": 2208,
+      "positive_rows": 248,
+      "negative_rows": 1960,
+      "grid_cells": 16,
+      "metrics": {
+        "f1": 0.2622641509433962,
+        "precision": 0.17118226600985223,
+        "recall": 0.5604838709677419,
+        "roc_auc": 0.654661784068466,
+        "pr_auc": 0.1806093556971738,
+        "brier_score": 0.09811673460895153,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            1287,
+            673
+          ],
+          [
+            109,
+            139
+          ]
+        ]
+      }
+    },
+    "loreto": {
+      "name": "Loreto",
+      "test_rows": 20562,
+      "positive_rows": 1414,
+      "negative_rows": 19148,
+      "grid_cells": 149,
+      "metrics": {
+        "f1": 0.42118537200504413,
+        "precision": 0.3799772468714448,
+        "recall": 0.4724186704384724,
+        "roc_auc": 0.8872979373946825,
+        "pr_auc": 0.38745073558447796,
+        "brier_score": 0.05287378612933193,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            18058,
+            1090
+          ],
+          [
+            746,
+            668
+          ]
+        ]
+      }
+    },
+    "madre_de_dios": {
+      "name": "Madre de Dios",
+      "test_rows": 5244,
+      "positive_rows": 609,
+      "negative_rows": 4635,
+      "grid_cells": 38,
+      "metrics": {
+        "f1": 0.5540298507462686,
+        "precision": 0.4352720450281426,
+        "recall": 0.7619047619047619,
+        "roc_auc": 0.9017957888061671,
+        "pr_auc": 0.5424061978662671,
+        "brier_score": 0.07409558577636892,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            4033,
+            602
+          ],
+          [
+            145,
+            464
+          ]
+        ]
+      }
+    },
+    "moquegua": {
+      "name": "Moquegua",
+      "test_rows": 966,
+      "positive_rows": 117,
+      "negative_rows": 849,
+      "grid_cells": 7,
+      "metrics": {
+        "f1": 0.3137254901960784,
+        "precision": 0.2898550724637681,
+        "recall": 0.3418803418803419,
+        "roc_auc": 0.7382692559371005,
+        "pr_auc": 0.2363533287114804,
+        "brier_score": 0.1038465429961673,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            751,
+            98
+          ],
+          [
+            77,
+            40
+          ]
+        ]
+      }
+    },
+    "pasco": {
+      "name": "Pasco",
+      "test_rows": 1242,
+      "positive_rows": 403,
+      "negative_rows": 839,
+      "grid_cells": 9,
+      "metrics": {
+        "f1": 0.525974025974026,
+        "precision": 0.390832328106152,
+        "recall": 0.8039702233250621,
+        "roc_auc": 0.6701097549073249,
+        "pr_auc": 0.5079265074426517,
+        "brier_score": 0.21298882192403074,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            334,
+            505
           ],
           [
             79,
-            681
+            324
           ]
         ]
       }
+    },
+    "piura": {
+      "name": "Piura",
+      "test_rows": 2208,
+      "positive_rows": 423,
+      "negative_rows": 1785,
+      "grid_cells": 16,
+      "metrics": {
+        "f1": 0.4470854555744199,
+        "precision": 0.29389880952380953,
+        "recall": 0.933806146572104,
+        "roc_auc": 0.7389898749097747,
+        "pr_auc": 0.3093680948791989,
+        "brier_score": 0.13668226202722564,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            836,
+            949
+          ],
+          [
+            28,
+            395
+          ]
+        ]
+      }
+    },
+    "puno": {
+      "name": "Puno",
+      "test_rows": 3864,
+      "positive_rows": 533,
+      "negative_rows": 3331,
+      "grid_cells": 28,
+      "metrics": {
+        "f1": 0.02867383512544803,
+        "precision": 0.32,
+        "recall": 0.0150093808630394,
+        "roc_auc": 0.6591015211586196,
+        "pr_auc": 0.2108025659644915,
+        "brier_score": 0.12051119533294455,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            3314,
+            17
+          ],
+          [
+            525,
+            8
+          ]
+        ]
+      }
+    },
+    "san_martin": {
+      "name": "San Mart\u00edn",
+      "test_rows": 2208,
+      "positive_rows": 902,
+      "negative_rows": 1306,
+      "grid_cells": 16,
+      "metrics": {
+        "f1": 0.6280114332380563,
+        "precision": 0.4970911441499677,
+        "recall": 0.852549889135255,
+        "roc_auc": 0.7174803822032373,
+        "pr_auc": 0.6408768131972153,
+        "brier_score": 0.24224161312571213,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            528,
+            778
+          ],
+          [
+            133,
+            769
+          ]
+        ]
+      }
+    },
+    "tacna": {
+      "name": "Tacna",
+      "test_rows": 1104,
+      "positive_rows": 37,
+      "negative_rows": 1067,
+      "grid_cells": 8,
+      "metrics": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "roc_auc": 0.5655918336330708,
+        "pr_auc": 0.041974292834469434,
+        "brier_score": 0.03257444261491369,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            1067,
+            0
+          ],
+          [
+            37,
+            0
+          ]
+        ]
+      }
+    },
+    "tumbes": {
+      "name": "Tumbes",
+      "test_rows": 552,
+      "positive_rows": 54,
+      "negative_rows": 498,
+      "grid_cells": 4,
+      "metrics": {
+        "f1": 0.30845771144278605,
+        "precision": 0.2108843537414966,
+        "recall": 0.5740740740740741,
+        "roc_auc": 0.777294362635728,
+        "pr_auc": 0.2854051629959769,
+        "brier_score": 0.08118768641610445,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            382,
+            116
+          ],
+          [
+            23,
+            31
+          ]
+        ]
+      }
+    },
+    "ucayali": {
+      "name": "Ucayali",
+      "test_rows": 5520,
+      "positive_rows": 1191,
+      "negative_rows": 4329,
+      "grid_cells": 40,
+      "metrics": {
+        "f1": 0.6068724519510774,
+        "precision": 0.46455639768167634,
+        "recall": 0.874895046179681,
+        "roc_auc": 0.8795038014181591,
+        "pr_auc": 0.6656939308929352,
+        "brier_score": 0.12529375828253347,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            3128,
+            1201
+          ],
+          [
+            149,
+            1042
+          ]
+        ]
+      }
+    }
+  },
+  "regional_assignment": "Each holdout grid cell is assigned by its center coordinate; border cells whose centers fall outside Peru are excluded from regional subsets. Regional scores use the single national threshold and are descriptive, not independently tuned.",
+  "models": {
+    "logistic": {
+      "best_params": {
+        "C": 0.006026889128682512
+      },
+      "trials": 5,
+      "cv_mean_pr_auc": 0.11494815179246291,
+      "validation_f1_at_selected_threshold": 0.20700451351196938,
+      "selected_threshold_from_temporal_oof": 0.07591547427155233,
+      "test": {
+        "f1": 0.3491934665719793,
+        "precision": 0.2276033538762663,
+        "recall": 0.7496950688273218,
+        "roc_auc": 0.6630765637142265,
+        "pr_auc": 0.2367447624079296,
+        "brier_score": 0.13813633940521317,
+        "threshold": 0.07591547427155233,
+        "confusion_matrix": [
+          [
+            29562,
+            29202
+          ],
+          [
+            2873,
+            8605
+          ]
+        ]
+      },
+      "raw_test_brier_score": 0.2768595163050949
+    },
+    "hist_gradient_boosting": {
+      "best_params": {
+        "max_iter": 250,
+        "learning_rate": 0.10211806418789517,
+        "max_leaf_nodes": 15,
+        "l2_regularization": 7.072114131472227
+      },
+      "trials": 5,
+      "cv_mean_pr_auc": 0.26471804362625034,
+      "validation_f1_at_selected_threshold": 0.33781044095286367,
+      "selected_threshold_from_temporal_oof": 0.17483420669769908,
+      "test": {
+        "f1": 0.49679863229526333,
+        "precision": 0.4037487059336348,
+        "recall": 0.6455828541557763,
+        "roc_auc": 0.8270404959105948,
+        "pr_auc": 0.4588428876013675,
+        "brier_score": 0.1151363900388354,
+        "threshold": 0.17483420669769908,
+        "confusion_matrix": [
+          [
+            47821,
+            10943
+          ],
+          [
+            4068,
+            7410
+          ]
+        ]
+      },
+      "raw_test_brier_score": 0.19647054510364512
+    },
+    "xgboost": {
+      "best_params": {
+        "n_estimators": 150,
+        "max_depth": 8,
+        "learning_rate": 0.10790061933340454,
+        "subsample": 0.8795975452591109,
+        "colsample_bytree": 0.7468055921327309,
+        "reg_lambda": 0.22853255256339208
+      },
+      "trials": 5,
+      "cv_mean_pr_auc": 0.2642431858670123,
+      "validation_f1_at_selected_threshold": 0.33116184217979944,
+      "selected_threshold_from_temporal_oof": 0.18678620182600253,
+      "test": {
+        "f1": 0.5071423912334486,
+        "precision": 0.4052856547122602,
+        "recall": 0.6773828193064994,
+        "roc_auc": 0.8327199698407037,
+        "pr_auc": 0.4739432643306212,
+        "brier_score": 0.11124784118635342,
+        "threshold": 0.18678620182600253,
+        "confusion_matrix": [
+          [
+            47355,
+            11409
+          ],
+          [
+            3703,
+            7775
+          ]
+        ]
+      },
+      "raw_test_brier_score": 0.16573493054428334
     }
   },
   "features": [

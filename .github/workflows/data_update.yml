@@ -33,7 +33,7 @@ jobs:
       - name: Install pinned dependencies
         run: python -m pip install -r requirements.txt
       - name: Download and integrate real FIRMS and weather data
-        run: python -m src.wildfire.cli data
+        run: python -m src.wildfire.cli data --region peru
       - name: Upload processed dataset for retraining and drift checks
         uses: actions/upload-artifact@v4
         with:
@@ -42,5 +42,6 @@ jobs:
             data/processed/real_daily.csv
             reports/real_ingestion.json
             reports/firms_gap_alternative_sources.json
+            web/region_weather.json
           if-no-files-found: error
           retention-days: 14

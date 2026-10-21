@@ -1,16 +1,17 @@
-# Incendios forestales en Madre de Dios, Perú: FIRMS + Open-Meteo
+# Detecciones de focos de calor en Perú: FIRMS + Open-Meteo
 
 Pipeline de datos y aprendizaje automatico para estudiar detecciones activas de
-incendios NASA FIRMS y meteorologia diaria Open-Meteo en el departamento de
-Madre de Dios, Peru. El codigo reutilizable esta en `src/wildfire/`; no depende
+incendios NASA FIRMS y meteorologia diaria Open-Meteo en todo el Perú.
+El codigo reutilizable esta en `src/wildfire/`; no depende
 de notebooks.
 
 > **Importante:** el objetivo implementado es clasificar si FIRMS registro un
 > hotspot en una celda durante un dia, usando solo meteorologia de dias previos.
 > Es retrospectivo, no un nowcast, pronostico futuro, alerta operativa ni
-> estimacion causal del riesgo de incendio. Open-Meteo se consulta en una malla
-> espacial, no en un punto representativo. Los negativos se muestrean solo en
-> fechas con detecciones en alguna parte del departamento: son un proxy de
+> estimacion causal del riesgo de incendio. El modelo nacional usa una malla
+> de 0,5° para las detecciones y una serie meteorológica representativa por cada
+> una de las 25 regiones; el clima local dentro de una región no queda resuelto.
+> Los negativos se conservan solo en fechas con detecciones en alguna parte del Perú: son un proxy de
 > actividad satelital, no prueba de ausencia de fuego. Las metricas sinteticas
 > son unicamente de pruebas y no evidencia del informe final.
 
@@ -28,7 +29,7 @@ de notebooks.
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-Copy-Item .env.example .env
+New-Item -ItemType File .env
 ```
 
 Abre `.env` localmente y asigna tu clave a `MAP_KEY`. Nunca pegues la clave en
@@ -40,19 +41,19 @@ Opciones de configuracion:
 | Variable | Predeterminado | Descripcion |
 | --- | --- | --- |
 | `MAP_KEY` | vacio | Clave de API de NASA FIRMS; necesaria para `make data`. |
+| `REGION` | `madre_de_dios` | Región objetivo: `madre_de_dios` o `peru` (nacional). |
 | `FIRMS_SOURCE` | `VIIRS_SNPP_SP` | Coleccion VIIRS de procesamiento estandar para el archivo historico. |
-| `FIRMS_AREA` | `-72.4287387,-13.3413977,-68.6519906,-9.9069082` | Bounding box del departamento Madre de Dios en orden `oeste,sur,este,norte`. |
-| `METEO_LATITUDE` | `-12.0` | Punto representativo aproximado del centro geografico del departamento. |
-| `METEO_LONGITUDE` | `-70.25` | Punto representativo aproximado del centro geografico del departamento. |
+| `FIRMS_AREA` | `-72.4287387,-13.3413977,-68.6519906,-9.9069082` | Bounding box en orden `oeste,sur,este,norte` (Perú nacional: `-81.33,-18.35,-68.65,-0.038`). |
+| `METEO_LATITUDE` | `-12.0` | Punto representativo aproximado del centro geografico (`-9.19` para Perú). |
+| `METEO_LONGITUDE` | `-70.25` | Punto representativo aproximado del centro geografico (`-75.015` para Perú). |
 | `START_DATE`, `END_DATE` | `2024-10-10`, `2026-10-10` | Periodo `AAAA-MM-DD`; se exige al menos un año. |
-| `GRID_CELL_DEGREES` | `0.25` | Resolucion angular de la malla recortada a la frontera administrativa. |
+| `GRID_CELL_DEGREES` | `0.25` | Resolucion angular de la malla recortada a la frontera (`0.5` para Perú). |
+| `WEATHER_BATCH_SIZE`| `50` | Celdas agrupadas por consulta a Open-Meteo para Madre de Dios; el flujo nacional usa 25 puntos regionales. |
+| `WEATHER_CHUNK_DAYS`| `180` | Bloque temporal en días por llamada a Open-Meteo (reduce consultas en un 85%+). |
 
-Se eligio Madre de Dios para delimitar el analisis a una sola unidad
-administrativa amazonica peruana, evitando mezclar departamentos y climas. La
-caja se deriva del bounding box de su relacion administrativa de OpenStreetMap
-(relacion [1891287](https://www.openstreetmap.org/relation/1891287)); FIRMS
-necesita un rectangulo, que puede incluir pequenas zonas fuera de la frontera.
-El punto meteorologico es representativo, no un promedio espacial.
+Por defecto, el proyecto usa Madre de Dios para delimitar el análisis a una sola unidad
+administrativa amazónica peruana. Para procesar **todo el Perú**, puedes ejecutar
+`make data-peru` o indicar `REGION=peru` (o `--region peru`).
 
 Para otras plataformas, crea el entorno virtual con Python 3.11, instala
 `requirements.txt` y ejecuta los mismos comandos Python indicados abajo.
@@ -62,9 +63,11 @@ Para otras plataformas, crea el entorno virtual con Python 3.11, instala
 Con el entorno virtual activado:
 
 ```text
-make data       # 2 años reales de FIRMS + Open-Meteo (requiere MAP_KEY)
+make data       # 2 años reales para Madre de Dios (o la región definida en .env)
+make data-peru  # 2 años reales optimizados para todo el Perú (cobertura nacional)
 make data-demo  # demo aislada: solo para pruebas y tests
 make train      # entrena solo datos reales identificados como tales
+make train-peru # entrena explícitamente el conjunto nacional
 make run        # score del registro real mas reciente
 make test       # pruebas unitarias
 ```
@@ -78,16 +81,52 @@ iniciar. Ejecuta localmente:
 docker compose up --build
 ```
 
-Abre `http://localhost:8000/` para la interfaz (toda en inglés) y
+Abre `http://localhost:8000/` para la interfaz en español y
 `http://localhost:8000/docs` para Swagger/OpenAPI. Endpoints:
 
 - `GET /health`: estado del servicio y del modelo cargado.
 - `GET /model-info`: modelo, periodo, features, umbral y métricas del holdout.
 - `POST /predict`: recibe `cell_id`, fecha ISO `date` y un objeto `features`
   con las 13 features numéricas exactas que devuelve `/model-info`.
+- `GET /api/regions`: Perú completo y sus 25 regiones, derivados del GeoJSON local.
+- `GET /api/regions-geojson`: límites administrativos usados por los tres mapas.
+- `POST /api/predict-grid`: evalúa hasta 2000 muestras, con variables
+  meteorológicas completas por muestra o compartidas; rechaza entradas inválidas.
+- `GET /api/region-weather`: perfiles históricos observados, secos y húmedos
+  para las 25 regiones usados por el mapa.
+- `GET /api/historical-fires`: sirve la muestra local `web/historical_fires.json`.
 
 Predicciones son retrospectivas, no alertas o pronósticos. La tabla web muestra
-la probabilidad, el umbral y la celda evaluada.
+la probabilidad, el umbral y la celda evaluada. La fecha identifica la
+observación, pero no es una variable del modelo. El panorama abre con clima
+histórico del mismo día en 25 puntos regionales. Los perfiles secos y húmedos
+usan fechas históricas que pueden diferir entre regiones. La superficie entre muestras se
+interpola solo para visualizarla y se recorta al límite regional. Los indicadores
+cuentan únicamente centros de muestreo dentro de la región; «sobre el umbral»
+usa el corte calibrado del modelo. La malla visual nacional usa muestras a
+intervalos de 0,35°; el entrenamiento emplea celdas de 0,5° y clima de 25
+puntos regionales. Al hacer clic en el mapa se calcula un valor
+exacto para esa coordenada, sin tomar el color interpolado como predicción.
+El modelo desplegado fue entrenado con datos del Perú completo y se evaluó con
+un holdout temporal nacional. El panel informa métricas regionales cuando hay
+ejemplos de ambas clases; las regiones sin muestra suficiente no reciben una
+métrica local. El mapa de observaciones usa una muestra incluida en el
+repositorio, no una consulta
+en vivo ni el archivo completo de FIRMS. Su etiqueta regional se contrasta
+con las coordenadas: los puntos se filtran por el polígono en que caen y los
+que están fuera de Perú quedan excluidos del mapa nacional.
+
+Los límites provienen de [geoBoundaries gbOpen Perú ADM1](https://www.geoboundaries.org/api/current/gbOpen/PER/ADM1/)
+(William & Mary geoLab; fuente original: Wikimedia Commons). El archivo local
+`web/peru_regions.geojson` incluye 25 regiones: Lima Metropolitana se une a
+Lima y Callao se mantiene como región separada. El selector, las extensiones
+del mapa y la resolución de la malla se calculan desde ese archivo, sin
+consultas externas en cada visita. Para actualizarlo, ejecuta
+`python scripts/update_regions.py` y revisa el GeoJSON resultante.
+
+La interfaz usa HTML, CSS, JavaScript y Leaflet sin fase de compilación.
+FastAPI sirve los archivos desde `web/` y el Dockerfile los copia en la
+imagen, de modo que Render puede seguir construyendo el mismo servicio Docker.
 
 En Windows, si no tienes GNU Make, los mismos atajos estan disponibles en
 PowerShell:
@@ -110,9 +149,12 @@ hasta cuatro trabajadores y un limitador global de una solicitud por segundo
 (aprox. 147 solicitudes para dos años, muy por debajo del limite de 5.000
 transacciones por 10 minutos). Los bloques se guardan atomicamente y se
 reutilizan al reanudar. El tramo NRT reciente se consulta aparte y se combina
-quitando detecciones duplicadas. Open-Meteo consulta la malla en bloques de 30
-dias y hasta 50 celdas por peticion, con una pausa minima de cuatro segundos y
-reintentos. La ejecucion guarda respuestas originales en `data/raw/` y la tabla
+quitando detecciones duplicadas. En el flujo nacional, Open-Meteo aporta una
+serie diaria por cada una de las 25 regiones y las celdas heredan el clima de
+la región que más superficie comparte con ellas. La resolución climática es
+regional; no permite distinguir microclimas dentro de una región. El cliente
+limita la frecuencia de solicitudes, reutiliza la caché y divide periodos si
+la API responde 429. La ejecucion guarda respuestas originales en `data/raw/` y la tabla
 celda-dia unida en `data/processed/real_daily.csv`. Los
 errores de red, autenticacion o respuesta incompleta detienen la ingesta; no se
 crean etiquetas ni clima sinteticos para reemplazar fallos. Como alternativa,
@@ -127,7 +169,7 @@ se configura en `.env`; la ingesta se detiene si es menor de un año. No
 etiquetes como ausencia de fuego un dia sin cobertura satelital adecuada.
 
 La etiqueta 1 significa que una celda tuvo al menos una deteccion FIRMS. La
-etiqueta 0 se conserva solo en dias con alguna deteccion en el departamento,
+etiqueta 0 se conserva solo en dias con alguna deteccion en el área de estudio,
 para limitar los negativos a fechas con actividad observada; aun asi no implica
 que el satelite haya sobrevolado la celda ni confirma ausencia de fuego.
 
@@ -145,7 +187,16 @@ marcada como `synthetic_demo` y el entrenador de CLI la rechaza. El modelo real
 se guarda en `models/wildfire_real.joblib` y sus metricas en
 `reports/real_metrics.json`. Las metricas incluyen balance de clase completo y
 del holdout, intervalo de fechas, numero de detecciones, confusion matrix y
-scores. `make run` escribe la clasificacion retrospectiva en la terminal.
+scores. El artefacto nacional vigente se entrenó con 350.192 registros de
+celda-día. En el holdout temporal del 22 de mayo al 10 de octubre de 2026
+obtuvo F1 0,497, precisión 0,404, recall 0,646 y PR-AUC 0,459. La calibración
+logística con predicciones temporales fuera de pliegue redujo el Brier del
+holdout de 0,196 a 0,115; el umbral calibrado es 0,175. Las métricas
+regionales se calculan con el mismo umbral nacional: 24 regiones tienen ambas
+clases; Callao no tiene centro de celda propio en esta malla de 0,5°. En Tacna,
+Arequipa y Puno el F1 regional es inferior a 0,2. Estas cifras describen
+detecciones satelitales retrospectivas, no un pronóstico de incendios.
+`make run` escribe la clasificacion retrospectiva en la terminal.
 El artefacto vigente del modelo y su metadata se versionan para poder construir
 la API y la imagen de produccion desde un clone; artefactos de otros modelos,
 datasets y datos crudos permanecen ignorados.
@@ -159,7 +210,7 @@ por defecto. No uses ni transcribas las antiguas metricas demo de
 ## Docker
 
 El build es multi-stage y copia solo codigo, web, el modelo real versionado y
-sus metadatos. El modelo (`models/wildfire_real.joblib`, 402 KB) y
+sus metadatos. El modelo (`models/wildfire_real.joblib`, aproximadamente 476 KB) y
 `reports/real_metrics.json` se versionan deliberadamente como artefactos de
 despliegue pequenos y reproducibles; los demas modelos siguen ignorados. Los
 datos procesados locales, todos los crudos de `data/raw/`, `.env` y claves no se
